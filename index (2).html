@@ -1,0 +1,2628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LOME — Logistics Operations · Success Resources</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0D0F14;--bg1:#13161D;--bg2:#1B1F28;--bg3:#222732;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.11);
+  --text:#E4E7F0;--text2:#8B92A8;--text3:#4E5567;
+  --accent:#4F8EF7;--accent2:#2563EB;--accent-bg:rgba(79,142,247,0.09);
+  --green:#2DD47A;--green-bg:rgba(45,212,122,0.09);
+  --amber:#F5A623;--amber-bg:rgba(245,166,35,0.09);
+  --red:#F04E4E;--red-bg:rgba(240,78,78,0.09);
+  --purple:#A78BFA;--purple-bg:rgba(167,139,250,0.09);
+  --teal:#22D3EE;--teal-bg:rgba(34,211,238,0.09);
+  --radius:8px;--radius-lg:12px;
+  --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;--display:'Instrument Serif',serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;overflow:hidden;}
+button,select,input{font-family:var(--font);}
+.shell{display:grid;grid-template-columns:230px 1fr;height:100vh;overflow:hidden;}
+
+/* ── SIDEBAR ── */
+.sidebar{background:var(--bg1);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.brand{padding:20px 18px 16px;border-bottom:1px solid var(--border);}
+.brand-name{font-family:var(--display);font-size:24px;letter-spacing:-0.5px;}
+.brand-name em{font-style:italic;color:var(--accent);}
+.brand-tagline{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-top:3px;}
+.nav-section{padding:14px 10px 4px;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;font-weight:500;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;margin:1px 6px;border-radius:var(--radius);cursor:pointer;color:var(--text2);font-size:12.5px;transition:all .12s;user-select:none;}
+.nav-item:hover{background:var(--bg2);color:var(--text);}
+.nav-item.active{background:var(--accent-bg);color:var(--accent);}
+.nav-icon{width:18px;text-align:center;font-size:14px;flex-shrink:0;}
+.nav-badge{margin-left:auto;font-size:10px;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;border-radius:9px;padding:0 5px;font-weight:600;}
+.nb-red{background:var(--red);color:#fff;}
+.nb-amber{background:var(--amber);color:#fff;}
+.nb-green{background:var(--green-bg);color:var(--green);}
+.sidebar-events{flex:1;overflow-y:auto;padding-bottom:8px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+.ev-item{margin:2px 6px;padding:9px 10px;border-radius:var(--radius);cursor:pointer;transition:all .12s;border:1px solid transparent;}
+.ev-item:hover{background:var(--bg2);}
+.ev-item.active{background:var(--accent-bg);border-color:rgba(79,142,247,0.18);}
+.ev-code{font-family:var(--mono);font-size:10px;color:var(--accent);margin-bottom:2px;}
+.ev-city{font-size:12px;font-weight:500;}
+.ev-meta{display:flex;align-items:center;gap:5px;margin-top:3px;}
+.ev-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.ev-date-s{font-size:10px;color:var(--text3);}
+.ev-pax-row{display:flex;gap:8px;margin-top:4px;}
+.ev-pax-chip{font-size:10px;font-family:var(--mono);padding:1px 6px;border-radius:4px;}
+.epc-reg{background:var(--accent-bg);color:var(--accent);}
+.epc-show{background:var(--green-bg);color:var(--green);}
+.ev-import-link{font-size:10px;color:var(--accent);cursor:pointer;margin-top:3px;}
+.ev-import-link:hover{color:var(--accent2);}
+.sidebar-foot{padding:12px 14px;border-top:1px solid var(--border);font-size:10px;color:var(--text3);}
+
+/* ── TOPBAR ── */
+.main{display:flex;flex-direction:column;overflow:hidden;}
+.topbar{display:flex;align-items:center;gap:8px;padding:0 18px;height:52px;border-bottom:1px solid var(--border);background:var(--bg1);flex-shrink:0;}
+.topbar-title{font-size:14px;font-weight:600;}
+.ev-pill{display:flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);padding:4px 10px;margin-left:4px;}
+.epc{font-family:var(--mono);font-size:10px;color:var(--accent);}
+.tgap{flex:1;}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);transition:all .12s;}
+.btn:hover{color:var(--text);}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+.btn.primary:hover{background:var(--accent2);}
+.btn.purple{background:var(--purple-bg);color:var(--purple);border-color:rgba(167,139,250,0.2);}
+.btn.teal{background:var(--teal-bg);color:var(--teal);border-color:rgba(34,211,238,0.2);}
+.btn.success{background:var(--green-bg);color:var(--green);border-color:rgba(45,212,122,0.2);}
+
+/* ── PAGES ── */
+.content{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.page{display:none;flex:1;overflow:hidden;flex-direction:column;}
+.page.active{display:flex;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.page.active{animation:fadeUp .15s ease;}
+
+/* ── MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:100;display:none;align-items:center;justify-content:center;backdrop-filter:blur(5px);}
+.overlay.show{display:flex;}
+.modal{background:var(--bg1);border:1px solid var(--border2);border-radius:16px;width:540px;max-width:92vw;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,0.65);}
+.modal-hd{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border);}
+.modal-title{font-size:14px;font-weight:600;margin-bottom:2px;}
+.modal-sub{font-size:11px;color:var(--text3);}
+.modal-x{width:26px;height:26px;border-radius:5px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.modal-x:hover{color:var(--text);}
+.modal-bd{padding:18px 20px;}
+.modal-ft{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--border);}
+.ev-tabs{display:flex;gap:5px;margin-bottom:14px;flex-wrap:wrap;}
+.ev-tab{font-size:11px;padding:4px 11px;border-radius:20px;border:1px solid var(--border);color:var(--text3);cursor:pointer;transition:all .12s;}
+.ev-tab.on{background:var(--accent-bg);border-color:rgba(79,142,247,0.3);color:var(--accent);}
+.drop-zone{border:1.5px dashed var(--border2);border-radius:var(--radius-lg);padding:26px 20px;text-align:center;cursor:pointer;transition:all .15s;background:var(--bg2);}
+.drop-zone:hover,.drop-zone.over{border-color:var(--accent);background:var(--accent-bg);}
+.drop-input{display:none;}
+.preview-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;margin-top:12px;display:none;}
+.preview-box.show{display:block;}
+.preview-title{font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;}
+.preview-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:10px;}
+.pv-s{background:var(--bg1);border-radius:6px;padding:7px 8px;text-align:center;}
+.pv-l{font-size:9px;color:var(--text3);text-transform:uppercase;margin-bottom:2px;}
+.pv-v{font-size:15px;font-weight:700;}
+.preview-detail{font-size:11px;color:var(--text2);line-height:1.8;}
+.preview-log{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:5px;line-height:1.7;}
+
+/* ── OVERVIEW ── */
+.ov-scroll{flex:1;overflow-y:auto;padding:18px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-bottom:16px;}
+.kpi{background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 15px;}
+.kpi-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;}
+.kpi-val{font-size:24px;font-weight:700;line-height:1;}
+.kpi-sub{font-size:10px;color:var(--text3);margin-top:3px;}
+.alert-banner{border-radius:var(--radius-lg);padding:11px 14px;margin-bottom:16px;display:flex;gap:10px;background:rgba(240,78,78,0.06);border:1px solid rgba(240,78,78,0.14);}
+.ab-title{font-size:12.5px;font-weight:600;margin-bottom:2px;}
+.ab-body{font-size:12px;color:var(--text2);line-height:1.5;}
+.sec-head{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;}
+.event-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.ec{background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden;}
+.ec::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;opacity:0;transition:opacity .2s;}
+.ec:hover{border-color:var(--border2);transform:translateY(-1px);}
+.ec:hover::after,.ec.alert::after,.ec.warn::after{opacity:1;}
+.ec.alert::after{background:linear-gradient(90deg,var(--red),transparent);}
+.ec.warn::after{background:linear-gradient(90deg,var(--amber),transparent);}
+.ec:hover::after{background:linear-gradient(90deg,var(--accent),transparent);}
+.ec-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+.ec-code{font-family:var(--mono);font-size:10px;color:var(--accent);}
+.chip{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:500;}
+.c-ok{background:var(--green-bg);color:var(--green);}
+.c-warn{background:var(--amber-bg);color:var(--amber);}
+.c-alert{background:var(--red-bg);color:var(--red);}
+.c-new{background:var(--purple-bg);color:var(--purple);}
+.c-tbd{background:rgba(255,255,255,0.05);color:var(--text3);}
+.ec-city{font-size:14px;font-weight:600;margin-bottom:1px;}
+.ec-date{font-size:11px;color:var(--text3);margin-bottom:10px;}
+.ec-pax-row{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:8px;}
+.ec-pax-box{background:var(--bg2);border-radius:5px;padding:6px;text-align:center;}
+.ec-pax-l{font-size:9px;color:var(--text3);text-transform:uppercase;margin-bottom:1px;}
+.ec-pax-v{font-size:13px;font-weight:700;}
+.prog-row{display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:3px;}
+.prog-track{height:3px;background:var(--bg2);border-radius:2px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:2px;transition:width .4s;}
+.ec-stock-row{display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);}
+.ec-stock-label{font-size:10px;color:var(--text3);}
+.ec-stock-val{font-size:11px;font-weight:600;}
+.ec-import-lnk{font-size:11px;color:var(--accent);cursor:pointer;}
+.ec-import-lnk:hover{color:var(--accent2);}
+
+/* ── FORECAST PANEL ── */
+.forecast-page{flex:1;overflow-y:auto;padding:18px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+.fc-ev-tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+.fc-ev-tab{font-size:12px;padding:6px 14px;border-radius:20px;border:1px solid var(--border);color:var(--text3);cursor:pointer;transition:all .12s;}
+.fc-ev-tab.on{background:var(--accent-bg);border-color:rgba(79,142,247,0.3);color:var(--accent);}
+.fc-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:18px;}
+.fc-card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;}
+.fc-card-title{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:12px;}
+.fc-big{font-size:32px;font-weight:700;line-height:1;margin-bottom:4px;}
+.fc-sub{font-size:11px;color:var(--text3);}
+.fc-breakdown{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+.fc-row{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border);}
+.fc-row:last-child{border-bottom:none;}
+.fc-row-label{color:var(--text2);}
+.fc-row-val{font-weight:600;font-family:var(--mono);}
+.show-rate-row{display:flex;align-items:center;gap:10px;background:var(--bg2);border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;flex-wrap:wrap;}
+.sr-label{font-size:11px;color:var(--text2);}
+.sr-input{width:60px;padding:4px 8px;background:var(--bg1);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:14px;font-weight:700;text-align:center;font-family:var(--mono);}
+.sr-input:focus{outline:none;border-color:var(--accent);}
+.sr-note{font-size:11px;color:var(--text3);}
+.velocity-chart{background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;margin-bottom:18px;}
+.vc-title{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:10px;}
+.vc-bars{display:flex;align-items:flex-end;gap:6px;height:80px;}
+.vc-bar-wrap{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;}
+.vc-bar{border-radius:3px 3px 0 0;min-height:3px;transition:height .3s;}
+.vc-bar.actual{background:var(--accent);}
+.vc-bar.forecast{background:rgba(79,142,247,0.3);border:1px dashed rgba(79,142,247,0.4);}
+.vc-label{font-size:9px;color:var(--text3);font-family:var(--mono);}
+.vc-legend{display:flex;gap:14px;margin-top:8px;font-size:10px;color:var(--text3);}
+.vc-leg-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px;}
+
+/* ── INVENTORY ── */
+.inv-toolbar{display:flex;align-items:center;gap:8px;padding:9px 18px;border-bottom:1px solid var(--border);background:var(--bg1);flex-shrink:0;flex-wrap:wrap;}
+.inv-search{position:relative;flex:1;min-width:150px;max-width:240px;}
+.inv-search input{width:100%;padding:6px 10px 6px 28px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:12px;}
+.inv-search input:focus{outline:none;border-color:var(--accent);}
+.s-ico{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none;}
+.inv-sum{display:flex;gap:0;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg1);}
+.is{flex:1;padding:8px 12px;border-right:1px solid var(--border);text-align:center;}
+.is:last-child{border-right:none;}
+.is-l{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:2px;}
+.is-v{font-size:15px;font-weight:700;}
+.tbl-wrap{flex:1;overflow:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;scroll-behavior:auto;overscroll-behavior:contain;}
+table{width:100%;border-collapse:collapse;min-width:900px;}
+thead th{position:sticky;top:0;z-index:3;text-align:left;padding:7px 10px;font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;background:var(--bg1);border-bottom:1px solid var(--border);white-space:nowrap;}
+tbody tr:hover td{background:rgba(255,255,255,0.015);}
+tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.sec-row td{padding:4px 10px;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;background:rgba(255,255,255,0.015);border-bottom:1px solid var(--border);}
+.code-tag{font-family:var(--mono);font-size:10px;color:var(--accent);background:var(--accent-bg);padding:2px 5px;border-radius:4px;white-space:nowrap;}
+.item-name{font-size:12px;font-weight:500;line-height:1.3;}
+.item-spec{font-size:10px;color:var(--text3);margin-top:1px;}
+
+/* STOCK INPUT */
+.cell-input{font-size:11px;padding:4px 6px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text2);transition:all .12s;width:100%;}
+.cell-input:focus{outline:none;border-color:var(--accent);background:var(--bg2);}
+.cell-input::placeholder{color:var(--text3);}
+.unit-input{width:52px!important;}
+.sel{font-size:11px;padding:4px 22px 4px 7px;border-radius:5px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);cursor:pointer;transition:all .12s;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='5'%3E%3Cpath d='M0 0l4.5 5 4.5-5z' fill='%234E5567'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 7px center;}
+.sel:focus{outline:none;border-color:var(--accent);}
+.stock-input{width:70px;text-align:center;font-size:13px;font-weight:700;font-family:var(--mono);padding:4px 5px;border-radius:5px;border:1px solid var(--border);background:var(--bg2);color:var(--text);scroll-margin:0;}
+.stock-input:focus{outline:none;border-color:var(--accent);}
+.reusable-tag{font-size:10px;font-weight:500;color:var(--teal);background:var(--teal-bg);padding:2px 7px;border-radius:10px;white-space:nowrap;display:inline-block;}
+.consumable-tag{font-size:10px;font-weight:500;color:var(--text3);background:rgba(255,255,255,0.04);padding:2px 7px;border-radius:10px;white-space:nowrap;display:inline-block;}
+.mono-num{font-family:var(--mono);font-size:13px;font-weight:600;}
+
+/* STATUS INDICATORS */
+.stock-status{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:3px 8px;border-radius:6px;}
+.ss-ok{background:var(--green-bg);color:var(--green);}
+.ss-surplus{background:var(--teal-bg);color:var(--teal);}
+.ss-low{background:var(--amber-bg);color:var(--amber);}
+.ss-out{background:var(--red-bg);color:var(--red);}
+.ss-na{background:rgba(255,255,255,0.04);color:var(--text3);}
+.alloc-bar{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-top:3px;}
+.alloc-bar-fill{height:100%;border-radius:2px;transition:width .3s;}
+.alloc-label{font-size:9px;color:var(--text3);display:flex;justify-content:space-between;margin-bottom:2px;}
+
+/* ── PACKING ── */
+.packing-toolbar{display:flex;align-items:center;gap:8px;padding:9px 18px;border-bottom:1px solid var(--border);background:var(--bg1);flex-shrink:0;flex-wrap:wrap;}
+.packing-ev-sel{font-size:12px;padding:5px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg2);color:var(--text);cursor:pointer;}
+.pack-prog-row{display:flex;align-items:center;gap:12px;padding:10px 18px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;}
+.pack-prog-track{flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.pack-prog-fill{height:100%;background:var(--green);border-radius:3px;transition:width .3s;}
+.pack-scroll-wrap{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+.pack-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:18px;align-content:start;}
+.pack-sec{background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;}
+.pack-sec-hd{display:flex;align-items:center;gap:8px;padding:11px 13px;border-bottom:1px solid var(--border);background:var(--bg2);}
+.pack-sec-title{font-size:12.5px;font-weight:600;flex:1;}
+.pack-sec-cnt{font-size:11px;color:var(--text3);}
+.pack-row{display:flex;align-items:flex-start;gap:9px;padding:8px 13px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;}
+.pack-row:last-child{border-bottom:none;}
+.pack-row:hover{background:rgba(255,255,255,0.02);}
+.pack-chk{width:15px;height:15px;border-radius:3px;border:1.5px solid var(--border2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;transition:all .12s;}
+.pack-chk.done{background:var(--green);border-color:var(--green);}
+.pack-body{flex:1;}
+.pack-name{font-size:12px;line-height:1.3;}
+.pack-note{font-size:10px;color:var(--text3);margin-top:1px;}
+.pack-right{display:flex;flex-direction:column;align-items:flex-end;gap:2px;}
+.pack-qty-row{display:flex;align-items:center;gap:5px;}
+.pack-qty{font-size:12px;font-weight:600;font-family:var(--mono);}
+.pack-stock-badge{font-size:9px;padding:1px 5px;border-radius:4px;}
+.psb-ok{background:var(--green-bg);color:var(--green);}
+.psb-low{background:var(--amber-bg);color:var(--amber);}
+.psb-out{background:var(--red-bg);color:var(--red);}
+.psb-na{background:rgba(255,255,255,0.05);color:var(--text3);}
+.pack-code{font-size:9px;color:var(--text3);font-family:var(--mono);}
+
+/* STATIONERY */
+.stat-hd{display:flex;align-items:center;gap:10px;padding:9px 18px;border-bottom:1px solid var(--border);background:var(--bg1);flex-shrink:0;}
+.proc-status{font-size:11px;padding:4px 22px 4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);cursor:pointer;width:120px;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='5'%3E%3Cpath d='M0 0l4.5 5 4.5-5z' fill='%234E5567'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 7px center;}
+.proc-status.ordered{background-color:var(--amber-bg);border-color:rgba(245,166,35,0.25);color:var(--amber);}
+.proc-status.received{background-color:var(--green-bg);border-color:rgba(45,212,122,0.2);color:var(--green);}
+.proc-input{font-size:11px;padding:5px 7px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text2);transition:all .12s;width:100%;}
+.proc-input:focus{outline:none;border-color:var(--accent);background:var(--bg2);}
+.recv-btn{font-size:11px;padding:5px 12px;border-radius:6px;border:none;background:var(--green);color:#fff;cursor:pointer;font-weight:500;white-space:nowrap;transition:all .12s;}
+.recv-btn:hover{background:#22b866;}
+.recv-btn:disabled{background:var(--bg2);color:var(--text3);cursor:default;}
+.pax-in{width:66px;padding:4px 7px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:13px;font-weight:600;text-align:center;font-family:var(--mono);}
+.pax-in:focus{outline:none;border-color:var(--accent);}
+.plb{font-size:11px;color:var(--text3);}
+
+.ai-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg1);}
+.ai-tab{padding:10px 18px;font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);transition:all .15s;}
+.ai-tab:hover{color:var(--text);}
+.ai-tab.on{color:var(--accent);border-bottom-color:var(--accent);}
+.ai-sub{display:none;flex:1;flex-direction:column;overflow:hidden;}
+.ai-sub.on{display:flex;}
+.ai-form{padding:16px 18px;border-bottom:1px solid var(--border);background:var(--bg1);flex-shrink:0;display:flex;flex-direction:column;gap:10px;}
+.ai-form-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;}
+.ai-fg{display:flex;flex-direction:column;gap:4px;}
+.ai-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-weight:500;}
+.ai-input,.ai-select{padding:7px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font);}
+.ai-input:focus,.ai-select:focus{outline:none;border-color:var(--accent);}
+.ai-result{flex:1;overflow-y:auto;padding:18px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+.ai-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);gap:10px;text-align:center;}
+.ai-empty-icon{font-size:40px;}
+.ai-loading{display:flex;align-items:center;gap:10px;padding:20px;color:var(--text2);font-size:13px;}
+.ai-dots span{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);animation:aidot 1.2s infinite;margin:0 2px;}
+.ai-dots span:nth-child(2){animation-delay:.2s;}
+.ai-dots span:nth-child(3){animation-delay:.4s;}
+@keyframes aidot{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+.ai-response{background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;font-size:13px;line-height:1.8;color:var(--text2);}
+.ai-action-row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+.mat-chips{display:flex;flex-wrap:wrap;gap:6px;padding:10px 18px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg2);}
+.mat-chip{font-size:11px;padding:4px 10px;border-radius:16px;border:1px solid var(--border2);background:var(--bg1);color:var(--text2);cursor:pointer;transition:all .12s;}
+.mat-chip.on{background:var(--accent-bg);border-color:rgba(79,142,247,0.3);color:var(--accent);}
+.mat-chip:hover:not(.on){color:var(--text);}
+.vendor-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-top:12px;}
+.vendor-card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:13px 14px;}
+.vendor-card.best{border-color:rgba(45,212,122,0.35);background:rgba(45,212,122,0.04);}
+.vendor-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:7px;}
+.vendor-name{font-size:13px;font-weight:700;color:var(--text);line-height:1.3;}
+.vendor-score{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:10px;background:var(--green-bg);color:var(--green);white-space:nowrap;}
+.vendor-meta{font-size:11px;color:var(--text3);line-height:1.6;margin-bottom:8px;}
+.vendor-tags{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0;}
+.vendor-tag{font-size:9px;padding:2px 6px;border-radius:10px;background:rgba(255,255,255,0.05);color:var(--text2);}
+.vendor-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.vendor-message{font-size:11px;line-height:1.6;color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:9px 10px;margin-top:9px;}
+.priority-box{background:rgba(79,142,247,0.06);border:1px solid rgba(79,142,247,0.18);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:12px;font-size:12px;line-height:1.7;color:var(--text2);}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-name">LO<em>ME</em></div>
+    <div class="brand-tagline">Logistics Operations · MMI</div>
+  </div>
+  <div class="nav-section">Navigate</div>
+  <div class="nav-item active" onclick="showPage('overview',this)"><span class="nav-icon">◈</span>Overview</div>
+  <div class="nav-item" onclick="showPage('forecast',this)"><span class="nav-icon">📈</span>Forecast<span class="nav-badge nb-amber" id="fc-badge">—</span></div>
+  <div class="nav-item" onclick="showPage('inventory',this)"><span class="nav-icon">📦</span>Stock Management<span class="nav-badge nb-red" id="inv-badge">—</span></div>
+  <div class="nav-item" onclick="showPage('packing',this)"><span class="nav-icon">✓</span>Packing Plan</div>
+  <div class="nav-item" onclick="showPage('stationery',this)"><span class="nav-icon">✎</span>Stationery</div>
+  <div class="nav-item" onclick="showPage('ai',this)"><span class="nav-icon">✦</span>Emergency Vendors</div>
+  <div class="nav-section" style="margin-top:4px;">2026 Events</div>
+  <div class="sidebar-events" id="sidebar-events"></div>
+  <div class="sidebar-foot">LOME v2.0 · Success Resources</div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="topbar">
+    <span class="topbar-title" id="topbar-title">Overview</span>
+    <div class="ev-pill">
+      <span class="epc" id="tp-code">—</span>
+      <span style="color:var(--text3)">·</span>
+      <span style="font-size:12px;font-weight:500" id="tp-city">—</span>
+      <span style="color:var(--text3)">·</span>
+      <span style="font-size:11px;color:var(--text3)" id="tp-date">—</span>
+    </div>
+    <div class="tgap"></div>
+    <button class="btn purple" onclick="openModal('reg')">⬆ Import file</button>
+    <button class="btn" id="sync-btn" onclick="openSyncModal()" style="background:rgba(45,212,122,0.1);color:var(--green);border-color:rgba(45,212,122,0.25);">🔄 Live sync</button>
+    <button class="btn teal" onclick="exportXlsx()">⬇ Export Excel</button>
+    <button class="btn primary" onclick="showPage('inventory')">📦 Manage stock</button>
+  </div>
+
+  <div class="content">
+
+    <!-- OVERVIEW -->
+    <div class="page active" id="page-overview">
+      <div class="ov-scroll">
+        <div class="kpi-row" id="kpi-row"></div>
+        <div class="alert-banner"><div style="font-size:15px">⚡</div><div><div class="ab-title" id="alert-title"></div><div class="ab-body" id="alert-body"></div></div></div>
+        <div class="sec-head">Remaining 2026 events</div>
+        <div class="event-grid" id="event-grid"></div>
+      </div>
+    </div>
+
+    <!-- FORECAST -->
+    <div class="page" id="page-forecast">
+      <div class="forecast-page">
+        <div class="fc-ev-tabs" id="fc-ev-tabs"></div>
+        <div class="show-rate-row">
+          <span class="sr-label">Show-up rate:</span>
+          <input class="sr-input" type="number" id="show-rate" value="65" min="1" max="100" onchange="renderForecast()"/>
+          <span style="font-size:14px;color:var(--text3)">%</span>
+          <span class="sr-note">· Based on MMI historical attendance · Adjust per event if needed</span>
+        </div>
+        <div class="velocity-chart" id="velocity-chart"><div class="vc-title">Weekly ticket sales velocity</div><div style="font-size:12px;color:var(--text3)">Import a registration file to see velocity chart</div></div>
+        <div class="fc-grid" id="fc-grid"></div>
+      </div>
+    </div>
+
+    <!-- INVENTORY -->
+    <div class="page" id="page-inventory">
+      <!-- INV SUB-TABS -->
+      <div style="display:flex;border-bottom:1px solid var(--border);background:var(--bg1);flex-shrink:0;">
+        <div class="inv-subtab active" id="ist-warehouse" onclick="switchInvTab('warehouse',this)" style="padding:10px 18px;font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);">🏭 Warehouse Stock</div>
+        <div class="inv-subtab" id="ist-procurement" onclick="switchInvTab('procurement',this)" style="padding:10px 18px;font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);">🚚 Procurement</div>
+        <div class="inv-subtab" id="ist-order" onclick="switchInvTab('order',this)" style="padding:10px 18px;font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);">📋 Event Order Calculator</div>
+      </div>
+
+      <!-- ── WAREHOUSE TAB ── -->
+      <div id="inv-tab-warehouse" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+        <div class="inv-toolbar">
+          <div class="inv-search"><span class="s-ico">⌕</span><input id="inv-search" placeholder="Search item or code…" oninput="renderInventory()"/></div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            <button class="btn" style="font-size:11px" onclick="setInvFilter('all',this)">All</button>
+            <button class="btn" style="font-size:11px" onclick="setInvFilter('reusable',this)">♻ Reusable</button>
+            <button class="btn" style="font-size:11px" onclick="setInvFilter('consumable',this)">📦 Consumable</button>
+            <button class="btn" style="font-size:11px" onclick="setInvFilter('low',this)">Low ⚠</button>
+            <button class="btn" style="font-size:11px" onclick="setInvFilter('out',this)">Out 🔴</button>
+            <button class="btn" style="font-size:11px" onclick="setInvFilter('ok',this)">OK ✓</button>
+          </div>
+          <div class="tgap"></div>
+          <button class="btn success" onclick="saveInventory()">💾 Save stock</button>
+          <button class="btn teal" onclick="exportInventory()">⬇ Export inventory</button>
+          <button class="btn primary" onclick="switchInvTab('order',document.getElementById('ist-order'))">📋 View order calculator →</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:7px 18px;background:rgba(34,211,238,0.05);border-bottom:1px solid var(--border);font-size:11px;flex-shrink:0;">
+          <span style="color:var(--teal)">🏭</span>
+          <span style="color:var(--text2)"><b style="color:var(--teal)">Warehouse stock</b> — your master inventory, independent of any event. Key in how much you physically have on hand. LOME offsets this against each event's needs in the Order Calculator tab.</span>
+          <span style="color:var(--text3);margin-left:auto">Saves to browser · Click 💾 to persist</span>
+        </div>
+        <div class="inv-sum" id="inv-sum"></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th style="width:58px">Code</th>
+              <th style="min-width:200px">Item</th>
+              <th style="width:85px;text-align:center">Type</th>
+              <th style="width:110px;text-align:center">Warehouse stock</th>
+              <th style="width:90px;text-align:center">Unit</th>
+              <th style="width:120px;text-align:center">Last restocked</th>
+              <th style="width:120px">Condition</th>
+              <th style="width:150px">Notes</th>
+              <th style="width:120px">Vendor</th>
+            </tr></thead>
+            <tbody id="inv-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── PROCUREMENT TAB ── -->
+      <div id="inv-tab-procurement" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+        <div style="display:flex;align-items:center;gap:8px;padding:9px 18px;border-bottom:1px solid var(--border);background:var(--bg1);flex-shrink:0;flex-wrap:wrap;">
+          <div style="display:flex;gap:4px;">
+            <button class="btn" style="font-size:11px" onclick="setProcFilter('all',this)">All</button>
+            <button class="btn" style="font-size:11px" onclick="setProcFilter('ordered',this)">🚚 Ordered</button>
+            <button class="btn" style="font-size:11px" onclick="setProcFilter('received',this)">✅ Received</button>
+            <button class="btn" style="font-size:11px" onclick="setProcFilter('pending',this)">⏳ Not yet ordered</button>
+          </div>
+          <div style="flex:1"></div>
+          <button class="btn success" onclick="saveInventory()">💾 Save</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:7px 18px;background:rgba(245,166,35,0.05);border-bottom:1px solid var(--border);font-size:11px;flex-shrink:0;">
+          <span style="color:var(--amber)">🚚</span>
+          <span style="color:var(--text2)">Track what you've ordered and mark items as received. When received, LOME updates your warehouse stock automatically.</span>
+        </div>
+        <div class="inv-sum" id="proc-sum"></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th style="width:58px">Code</th>
+              <th style="min-width:180px">Item</th>
+              <th style="width:90px;text-align:center">In stock</th>
+              <th style="width:100px;text-align:center">Qty ordered</th>
+              <th style="width:120px">Order status</th>
+              <th style="width:110px">Order date</th>
+              <th style="width:150px">Notes / PO ref</th>
+              <th style="width:130px">Action</th>
+            </tr></thead>
+            <tbody id="proc-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── ORDER CALCULATOR TAB ── -->
+      <div id="inv-tab-order" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 18px;background:var(--bg1);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;">
+          <span class="plb">Event:</span>
+          <select id="oc-ev-sel" class="packing-ev-sel" onchange="renderOrderCalc()" style="font-size:12px;padding:5px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg2);color:var(--text);">
+            <option value="SG">MMI-2607-SG · Singapore</option>
+            <option value="BKK">MMI-2607-BKK · Bangkok</option>
+            <option value="JB">MMI-2607-JB · Johor Bahru</option>
+            <option value="KL">MMI-2611-KL · Kuala Lumpur</option>
+          </select>
+          <span style="font-size:11px;color:var(--text3)" id="oc-pax-note"></span>
+          <span style="font-size:11px;padding:3px 10px;background:var(--teal-bg);border-radius:12px;color:var(--teal)">📦 Warehouse stock offsets what you need to order</span>
+          <div class="tgap"></div>
+          <button class="btn" style="font-size:11px" onclick="setOcFilter('all',this)">All items</button>
+          <button class="btn" style="font-size:11px" onclick="setOcFilter('toorder',this)">Need to order</button>
+          <button class="btn" style="font-size:11px" onclick="setOcFilter('covered',this)">Covered by stock</button>
+          <button class="btn teal" onclick="exportOrderCalc()">⬇ Export order list</button>
+        </div>
+        <!-- Summary cards -->
+        <div id="oc-summary" style="display:flex;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg1);"></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th style="width:58px">Code</th>
+              <th style="min-width:180px">Item</th>
+              <th style="width:100px;text-align:center">Need<br/><span style="font-weight:400;color:var(--text3)">(show-up +5%)</span></th>
+              <th style="width:100px;text-align:center">Warehouse<br/><span style="font-weight:400;color:var(--text3)">stock (yours)</span></th>
+              <th style="width:110px;text-align:center">Use from<br/><span style="font-weight:400;color:var(--text3)">stock</span></th>
+              <th style="width:100px;text-align:center">On order<br/><span style="font-weight:400;color:var(--text3)">🚚 pending</span></th>
+              <th style="width:110px;text-align:center">Still to order<br/><span style="font-weight:400;color:var(--text3)">(final gap)</span></th>
+              <th style="width:90px;text-align:center">After event<br/><span style="font-weight:400;color:var(--text3)">remaining</span></th>
+              <th style="width:100px">Status</th>
+              <th style="width:120px">Vendor</th>
+            </tr></thead>
+            <tbody id="oc-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PACKING PLAN -->
+    <div class="page" id="page-packing">
+      <div class="packing-toolbar">
+        <span class="plb">Event:</span>
+        <select class="packing-ev-sel" id="pack-ev-sel" onchange="renderPackingPlan()">
+          <option value="SG">MMI-2607-SG · Singapore</option>
+          <option value="BKK">MMI-2607-BKK · Bangkok</option>
+          <option value="JB">MMI-2607-JB · Johor Bahru</option>
+          <option value="KL">MMI-2611-KL · Kuala Lumpur</option>
+        </select>
+        <span style="font-size:11px;color:var(--text3)" id="pack-pax-note"></span>
+        <div class="tgap"></div>
+        <button class="btn" onclick="resetPack()">Reset checklist</button>
+        <button class="btn teal" onclick="exportPackingPlan()">⬇ Export packing plan</button>
+      </div>
+      <div class="pack-prog-row">
+        <span style="font-size:15px">📦</span>
+        <span style="font-size:12px;font-weight:500">Packing progress</span>
+        <div class="pack-prog-track"><div class="pack-prog-fill" id="pack-prog-fill" style="width:0%"></div></div>
+        <span style="font-size:12px;font-family:var(--mono);color:var(--text2)" id="pack-prog-count">0 / 0</span>
+      </div>
+      <div class="pack-scroll-wrap"><div class="pack-grid" id="pack-grid"></div></div>
+    </div>
+
+    <!-- STATIONERY -->
+    <div class="page" id="page-stationery">
+      <div class="stat-hd">
+        <span class="plb">Base quantities — scale with pax</span>
+        <div class="tgap"></div>
+        <span class="plb">Show-up pax:</span>
+        <input class="pax-in" type="number" id="stat-pax" value="148" onchange="renderStat()"/>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th style="width:36px">#</th><th>Item</th><th style="width:100px;text-align:center">Base Qty</th><th style="width:110px;text-align:center">Scaled Qty</th><th>Remark</th></tr></thead>
+          <tbody id="stat-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+<!-- AI ASSISTANT -->
+    <div class="page" id="page-ai">
+      <div class="ai-tabs">
+        <div class="ai-tab on" onclick="switchAiTab('venue',this)">🏨 Venue Sourcer</div>
+        <div class="ai-tab" onclick="switchAiTab('materials',this)">🛒 Emergency Supplies</div>
+      </div>
+      <div style="display:flex;flex:1;overflow:hidden;flex-direction:column;" id="ai-body">
+
+        <!-- VENUE -->
+        <div class="ai-sub on" id="ai-sub-venue">
+          <div class="ai-form">
+            <div class="ai-form-row">
+              <div class="ai-fg"><div class="ai-label">Event</div>
+                <select class="ai-select" id="v-event">
+                  <option value="SG">MMI-2607-SG · Singapore</option>
+                  <option value="BKK">MMI-2607-BKK · Bangkok</option>
+                  <option value="JB">MMI-2607-JB · Johor Bahru</option>
+                  <option value="KL">MMI-2611-KL · Kuala Lumpur</option>
+                </select>
+              </div>
+              <div class="ai-fg"><div class="ai-label">Expected pax</div>
+                <input class="ai-input" type="number" id="v-pax" placeholder="e.g. 300"/>
+              </div>
+              <div class="ai-fg"><div class="ai-label">Venue type</div>
+                <select class="ai-select" id="v-type">
+                  <option>Hotel ballroom</option>
+                  <option>Convention centre</option>
+                  <option>Conference hotel</option>
+                  <option>Any suitable</option>
+                </select>
+              </div>
+              <div class="ai-fg"><div class="ai-label">Budget</div>
+                <select class="ai-select" id="v-budget">
+                  <option>Budget-friendly</option>
+                  <option>Mid-range</option>
+                  <option>Premium</option>
+                  <option>No preference</option>
+                </select>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <input class="ai-input" style="flex:1" type="text" id="v-notes" placeholder="Special requirements e.g. breakout rooms, stage, AV setup…"/>
+              <button class="btn primary" onclick="runVenueSearch()" style="white-space:nowrap">✦ Find venues</button>
+            </div>
+          </div>
+          <div class="ai-result" id="v-result">
+            <div class="ai-empty">
+              <div class="ai-empty-icon">🏨</div>
+              <div style="font-size:13px;font-weight:500">Create a venue sourcing search pack</div>
+              <div style="font-size:11px">Select your event, pax count and requirements, then generate clickable Google/Maps searches</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MATERIALS -->
+        <div class="ai-sub" id="ai-sub-materials">
+          <div class="ai-form" style="flex-direction:row;align-items:flex-end;">
+            <div class="ai-fg">
+              <div class="ai-label">Event city</div>
+              <select class="ai-select" id="m-event">
+                <option value="SG">Singapore</option>
+                <option value="BKK">Bangkok</option>
+                <option value="JB">Johor Bahru</option>
+                <option value="KL">Kuala Lumpur</option>
+              </select>
+            </div>
+            <div class="ai-fg" style="flex:1">
+              <div class="ai-label">What do you urgently need?</div>
+              <input class="ai-input" style="width:100%" type="text" id="m-query" placeholder="e.g. urgent printing, pens, markers, wristbands, name tags…"/>
+            </div>
+            <button class="btn primary" onclick="runMaterialsSearch()" style="white-space:nowrap">✦ Match vendors</button>
+          </div>
+          <div class="mat-chips" id="mat-chips"></div>
+          <div class="ai-result" id="m-result">
+            <div class="ai-empty">
+              <div class="ai-empty-icon">🛒</div>
+              <div style="font-size:13px;font-weight:500">Malaysia Emergency Vendor Directory</div>
+              <div style="font-size:11px">Select a city and item, then LOME will match trusted vendors and generate WhatsApp messages</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</main>
+</div>
+
+      </div>
+</main>
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="overlay" id="import-modal">
+  <div class="modal">
+    <div class="modal-hd">
+      <div><div class="modal-title">⬆ Import Registration List</div><div class="modal-sub">Upload MMI Master Registration Excel to update forecast</div></div>
+      <button class="modal-x" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div style="font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:500">Select event:</div>
+      <div class="ev-tabs" id="modal-ev-tabs"></div>
+      <div class="drop-zone" id="drop-zone"
+        onclick="document.getElementById('file-input').click()"
+        ondragover="ev.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')"
+        ondrop="ev.preventDefault();this.classList.remove('over');processFile(ev.dataTransfer.files[0])">
+        <div style="font-size:28px;margin-bottom:8px">📂</div>
+        <div style="font-size:13px;font-weight:500;margin-bottom:3px">Drop registration Excel here</div>
+        <div style="font-size:11px;color:var(--text3)">Click to browse · .xlsx · MMI Master Registration List</div>
+        <input type="file" id="file-input" class="drop-input" accept=".xlsx,.xls" onchange="processFile(this.files[0])"/>
+      </div>
+      <div class="preview-box" id="preview-box">
+        <div class="preview-title">📊 Registration data from file</div>
+        <div class="preview-grid" id="preview-grid"></div>
+        <div class="preview-detail" id="preview-detail"></div>
+        <div class="preview-log" id="preview-log"></div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn primary" id="apply-btn" onclick="applyImport()" disabled style="opacity:.4;cursor:not-allowed">Apply to LOME</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── LIVE SYNC MODAL ── -->
+<div class="overlay" id="sync-modal">
+  <div class="modal" style="width:600px;max-width:94vw;">
+    <div class="modal-hd">
+      <div>
+        <div class="modal-title">🔄 Live Sync — Google Sheets</div>
+        <div class="modal-sub">Connect your master registration Google Sheet for one-click updates</div>
+      </div>
+      <button class="modal-x" onclick="closeSyncModal()">✕</button>
+    </div>
+    <div class="modal-bd" style="overflow-y:auto;max-height:70vh;">
+      <div style="background:rgba(45,212,122,0.06);border:1px solid rgba(45,212,122,0.15);border-radius:var(--radius-lg);padding:13px 15px;margin-bottom:14px;font-size:12px;color:var(--text2);line-height:1.9;">
+        <div style="font-weight:600;color:var(--green);margin-bottom:6px;">One-time setup — Google Apps Script (~3 mins)</div>
+        <div><b style="color:var(--text)">1.</b> Open your MMI Master Registration Google Sheet</div>
+        <div><b style="color:var(--text)">2.</b> Click <b style="color:var(--text)">Extensions → Apps Script</b></div>
+        <div><b style="color:var(--text)">3.</b> Delete all existing code and paste the LOME script below</div>
+        <div><b style="color:var(--text)">4.</b> Click <b style="color:var(--text)">Deploy → New deployment → Web app</b></div>
+        <div><b style="color:var(--text)">5.</b> Set <b style="color:var(--text)">Execute as: Me</b> &nbsp;·&nbsp; <b style="color:var(--text)">Who has access: Anyone</b> → Deploy</div>
+        <div><b style="color:var(--text)">6.</b> Copy the <b style="color:var(--text)">Web app URL</b> and paste it below</div>
+        <div style="margin-top:4px;font-size:10px;color:var(--amber);">⚠ Open your sheet normally at docs.google.com/spreadsheets — not the published /e/ URL — then go to Extensions → Apps Script</div>
+        <div style="margin-top:7px;font-size:10px;color:var(--text3);">Runs on Google's own servers — no browser CORS issues. Your sheet stays private in Google Drive. This script works with your actual Google Sheet — not the published CSV URL.</div>
+      </div>
+      <div style="margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:11px;color:var(--text2);font-weight:500;">📋 Paste this into Extensions → Apps Script</span>
+          <button class="btn" style="font-size:10px;padding:3px 9px;flex-shrink:0;" onclick="copyAppsScript()">📋 Copy script</button>
+        </div>
+        <pre id="apps-script-code" style="background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 12px;font-family:var(--mono);font-size:10px;color:var(--text3);line-height:1.6;max-height:130px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;margin:0;">function doGet(e) {
+  // LOME Sync Script — reads MMI Master Registration List
+  // Searches all sheet tabs for "Full List" or uses the first sheet
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var tab = null;
+  var sheets = ss.getSheets();
+  // Try to find "Full List" tab (case-insensitive)
+  for(var s=0; s<sheets.length; s++){
+    if(sheets[s].getName().toLowerCase().indexOf("full list") >= 0){
+      tab = sheets[s]; break;
+    }
+  }
+  if(!tab) tab = sheets[0]; // fallback to first sheet
+
+  var data = tab.getDataRange().getValues();
+  if(data.length < 2) return ContentService.createTextOutput(JSON.stringify({total:0,vip:0,std:0,ql:0,vipPct:38,weekly:{},updated:new Date().toISOString()})).setMimeType(ContentService.MimeType.JSON);
+
+  var headers = data[0].map(function(h){ return String(h).toLowerCase().trim(); });
+  // Find key columns — flexible matching
+  var lsCol   = -1, dateCol = -1, typeCol = -1;
+  headers.forEach(function(h,i){
+    if(h.includes("lead source") || h === "ls") lsCol = i;
+    if((h.includes("date") && h.includes("purchase")) || h === "date of purchase") dateCol = i;
+    if(h === "tc" || h === "ticket category" || h === "type") typeCol = i;
+  });
+  // Fallback: use first column that contains "date"
+  if(dateCol < 0) headers.forEach(function(h,i){ if(h.includes("date") && dateCol<0) dateCol=i; });
+
+  var total=0, vip=0, std=0, ql=0;
+  var weekly = {};
+  for(var i=1; i<data.length; i++){
+    var row = data[i];
+    if(!row.some(function(c){ return String(c).trim(); })) continue; // skip empty rows
+    var ls   = lsCol>=0   ? String(row[lsCol]  ||"").toLowerCase().trim() : "";
+    var type = typeCol>=0 ? String(row[typeCol] ||"").toLowerCase().trim() : "";
+    if(!ls && !type) continue;
+    if(ls.includes("refund")) continue;
+    total++;
+    // VIP detection: check lead source or ticket type column
+    var isVip = ls.includes("vip") || type === "vip";
+    if(isVip) vip++; else std++;
+    // QL detection
+    if(ls.indexOf("[ql]") === 0 || ls.includes("ql buyer") || ls === "ql") ql++;
+    // Weekly velocity from purchase date
+    if(dateCol>=0 && row[dateCol]){
+      try{
+        var d = new Date(row[dateCol]);
+        if(!isNaN(d.getTime())){
+          var yr = d.getFullYear();
+          var startOfYear = new Date(yr,0,1);
+          var wk = Math.ceil((((d - startOfYear)/86400000) + startOfYear.getDay() + 1) / 7);
+          var key = yr + "-W" + ("0"+wk).slice(-2);
+          weekly[key] = (weekly[key]||0) + 1;
+        }
+      } catch(ex){}
+    }
+  }
+  var result = {
+    total:   total,
+    vip:     vip,
+    std:     std,
+    ql:      ql,
+    vipPct:  total > 0 ? Math.round(vip/total*100) : 38,
+    weekly:  weekly,
+    sheet:   tab.getName(),
+    updated: new Date().toISOString()
+  };
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}</pre>
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:500;">Which event?</div>
+
+      <div class="ev-tabs" id="sync-ev-tabs"></div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:5px;font-weight:500;">Published CSV URL for this event</div>
+        <div style="display:flex;gap:8px;">
+          <input type="url" id="sync-url-input"
+            placeholder="https://script.google.com/macros/s/AKfy.../exec"
+            style="flex:1;padding:8px 11px;font-size:11px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-family:var(--mono);"
+            oninput="saveSyncUrl()"/>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;" id="sync-url-saved"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg2);border-radius:var(--radius);margin-bottom:14px;border:1px solid var(--border);">
+        <input type="checkbox" id="auto-sync-chk" onchange="toggleAutoSync()" style="width:15px;height:15px;cursor:pointer;accent-color:var(--green);flex-shrink:0;"/>
+        <div>
+          <div style="font-size:12px;font-weight:500;">Auto-sync on open</div>
+          <div style="font-size:11px;color:var(--text3);">Fetch latest counts automatically every time you open LOME</div>
+        </div>
+      </div>
+      <div id="sync-status" style="display:none;border-radius:var(--radius);padding:11px 14px;font-size:12px;line-height:1.8;margin-bottom:12px;"></div>
+      <div style="font-size:11px;color:var(--text2);font-weight:500;margin-bottom:8px;">Saved connections</div>
+      <div id="sync-connections" style="display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="closeSyncModal()">Close</button>
+      <button class="btn primary" onclick="runSync()" id="sync-run-btn">🔄 Sync now</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════
+// FIREBASE LIVE SHARED DATABASE
+// ═══════════════════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyB543NCpKYE_vqgecKWoUjDTPE2Yga6XK8",
+  authDomain: "lome-success-resources.firebaseapp.com",
+  projectId: "lome-success-resources",
+  storageBucket: "lome-success-resources.firebasestorage.app",
+  messagingSenderId: "614830646737",
+  appId: "1:614830646737:web:63372ac6fd8534317facf0",
+  measurementId: "G-T91GN83R4F"
+};
+
+let cloudDb = null;
+let cloudInventoryRef = null;
+let cloudReady = false;
+let cloudSaveTimer = null;
+let cloudApplyingRemote = false;
+
+function initFirebaseLiveSync(){
+  try{
+    if(!window.firebase){
+      console.warn('Firebase SDK not loaded. Falling back to local-only mode.');
+      showToast('⚠ Cloud sync not loaded — local mode only');
+      return;
+    }
+    if(!firebase.apps.length){ firebase.initializeApp(firebaseConfig); }
+    cloudDb = firebase.firestore();
+    cloudInventoryRef = cloudDb.collection('lome').doc('sharedInventory');
+    cloudReady = true;
+
+    cloudInventoryRef.onSnapshot(async snap=>{
+      if(!snap.exists){
+        await cloudInventoryRef.set({
+          inventory: getInventoryPayload(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedBy: getClientLabel()
+        }, { merge:true });
+        return;
+      }
+      const data = snap.data() || {};
+      if(data.inventory){
+        cloudApplyingRemote = true;
+        applyInventoryData(data.inventory);
+        try{ localStorage.setItem('lome_inventory', JSON.stringify(data.inventory)); }catch(e){}
+        refreshAllInventoryViews();
+        cloudApplyingRemote = false;
+      }
+    }, err=>{
+      console.error('Firestore sync error:', err);
+      showToast('⚠ Cloud sync error — check Firestore rules');
+    });
+
+    showToast('☁️ Shared cloud sync connected');
+  }catch(e){
+    console.error('initFirebaseLiveSync:', e);
+    showToast('⚠ Could not start cloud sync — local mode only');
+  }
+}
+
+function getClientLabel(){
+  try{ return (navigator.platform || 'browser') + ' · ' + new Date().toLocaleString(); }
+  catch(e){ return 'browser'; }
+}
+
+function scheduleCloudSave(){
+  if(!cloudReady || !cloudInventoryRef || cloudApplyingRemote) return;
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = setTimeout(async()=>{
+    try{
+      await cloudInventoryRef.set({
+        inventory: getInventoryPayload(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedBy: getClientLabel()
+      }, { merge:true });
+    }catch(e){
+      console.error('Cloud save failed:', e);
+      showToast('⚠ Cloud save failed — local copy saved');
+    }
+  }, 700);
+}
+
+function refreshAllInventoryViews(){
+  try{
+    renderInvSummary();
+    renderInventory();
+    if(document.getElementById('inv-tab-procurement')?.style.display==='flex') renderProcurement();
+    if(document.getElementById('inv-tab-order')?.style.display==='flex') renderOrderCalc();
+    buildSidebar();
+  }catch(e){ console.warn('refreshAllInventoryViews:', e); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CORE DATA
+// ═══════════════════════════════════════════════════════════════
+const EVENTS=[
+  {id:'SG', code:'MMI-2607-SG', city:'Singapore',   date:'10–12 Jul 2026', days:51,  target:250, status:'warn',
+   reg:191, regWeekly:[2,1,5,13,47,42,38,18,11], regWeeks:['W07','W08','W14','W15','W16','W17','W18','W19','W20'],
+   forecast:0, showUp:0, vipPct:38, qlPct:5, lastImport:null},
+  {id:'BKK',code:'MMI-2607-BKK',city:'Bangkok',     date:'24–26 Jul 2026', days:65,  target:250, status:'tbd',
+   reg:null, regWeekly:[], regWeeks:[], forecast:0, showUp:0, vipPct:35, qlPct:5, lastImport:null, isBKK:true, thaiPct:60},
+  {id:'JB', code:'MMI-2607-JB', city:'Johor Bahru', date:'31 Jul–2 Aug 2026',days:72, target:250, status:'alert',
+   reg:52, regWeekly:[8,22,18], regWeeks:['W18','W19','W20'],
+   forecast:0, showUp:0, vipPct:19, qlPct:8, lastImport:null},
+  {id:'KL', code:'MMI-2611-KL', city:'Kuala Lumpur',date:'30 Oct–1 Nov 2026',days:164,target:250, status:'new',
+   reg:1, regWeekly:[1], regWeeks:['W18'],
+   forecast:0, showUp:0, vipPct:38, qlPct:5, lastImport:null},
+];
+
+// Compute forecasts on load
+function computeForecasts(){
+  const sr=parseInt(document.getElementById('show-rate')?.value||'65')/100;
+  EVENTS.forEach(ev=>{
+    if(!ev.reg){ev.forecast=0;ev.showUp=0;return;}
+    const weekly=ev.regWeekly;
+    if(weekly.length>=2){
+      const recent=weekly.slice(-3);
+      const avgVelocity=recent.reduce((a,b)=>a+b,0)/recent.length;
+      const weeksLeft=Math.max(0,ev.days/7-1);
+      ev.forecast=Math.round(ev.reg+avgVelocity*weeksLeft);
+    } else {
+      ev.forecast=Math.round((ev.reg||0)*1.15);
+    }
+    ev.showUp=Math.round(ev.forecast*sr);
+  });
+}
+
+// ── PRINT ITEMS ──────────────────────────────────────────────
+const ITEMS=[
+  {code:'B1-A',item:'Banner – Act in Spite of Fear',spec:'85cm×200cm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'B1-B',item:'Banner – Clarity Leads to Power',spec:'85cm×200cm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'B1-C',item:'Banner – Create Passive Income',spec:'85cm×200cm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'B1-D',item:'Banner – Money is a "Result"',spec:'85cm×200cm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'B1-E',item:'Banner – Pay Yourself First',spec:'85cm×200cm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'B1-F',item:'Banner – Success Breeds Success',spec:'85cm×200cm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'B1-G',item:'Banner – The "Roots" Create the "Fruits"',spec:'85cm×200cm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'B1-H',item:'Banner – The Goal is Financial Freedom',spec:'85cm×200cm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'B1-I',item:'Banner – The Past Does Not Equal the Future',spec:'85cm×200cm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'B1-J',item:'Banner – What You Focus On Expands',spec:'85cm×200cm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'B1-K',item:'Banner – You Can Be "Right" or "Rich"',spec:'85cm×200cm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'B1-L',item:"Banner – You'll See It When You Believe It",spec:'85cm×200cm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'B1-M',item:'Banner – Your Income Can Only Grow…',spec:'85cm×200cm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'B1-N',item:'Banner – Your Inner World Creates Your Outer World',spec:'85cm×200cm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'B2', item:'Banner – Success Resources',spec:'85cm×200cm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'B3', item:'Banner – Registration',spec:'85cm×200cm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'B4', item:'Banner – Customer Service',spec:'85cm×200cm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'B5', item:'Banner – VIP Registration',spec:'85cm×200cm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'B6', item:'Banner – Standard Registration',spec:'85cm×200cm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'B7', item:'Banner – VIP Entrance',spec:'85cm×200cm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'B8', item:'Banner – Standard Entrance',spec:'85cm×200cm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'B9', item:"Banner – SR Speaker's",spec:'85cm×200cm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'S1', item:'Signages set (Reg, Lost&Found, No Entry, VIP/Std, Entrance, Exit, Green Room)',spec:'A4 · 80gsm · Color · Laminate',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'C2', item:'A1 Banner (Sales)',spec:'A1 · Synthetic · Full Color · Matt Lam',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'Hot Print Media (PG)'},
+  {code:'EP1',item:'Bazooka – MMI',spec:'3150mm×2225mm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'EP2',item:'Bazooka – Success Resources',spec:'3150mm×2225mm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  {code:'EP3',item:'Bazooka – Quantum Leap',spec:'3150mm×2225mm · Color',cat:'banner',paxBased:false,fixedQty:1,reusable:true,lang:'EN',vendor:'—'},
+  // MATERIALS — pax based (uses showUp pax)
+  {code:'M1', item:'Workbook – Green (Thick)',spec:'A4 · 80gsm · Perfect Bound',cat:'material',paxBased:true,ratio:1.0,lang:'EN',vendor:'Kadpo Industry (PG)'},
+  {code:'M2', item:'Workbook – Grey (Thin)',spec:'A4 · 80gsm · Saddle Stitched',cat:'material',paxBased:true,ratio:1.0,lang:'EN',vendor:'Kadpo Industry (PG)'},
+  {code:'M3', item:'Registration Wristband – VIP (Red)',spec:'25mm Synthetic',cat:'material',paxBased:true,ratio:'vip',lang:'EN',vendor:'Kadpo Industry (PG)'},
+  {code:'M4', item:'Registration Wristband – Standard (Green)',spec:'25mm Synthetic',cat:'material',paxBased:true,ratio:'std',lang:'EN',vendor:'Kadpo Industry (PG)'},
+  {code:'M5', item:'$500 Currency Certificate',spec:'8"×3.5" · 160gsm Artcard',cat:'material',paxBased:true,ratio:2.0,perPaxNote:'2 per pax',lang:'EN',vendor:'Kadpo Industry (PG)'},
+  {code:'M6', item:'Lucky Draw Tickets',spec:'16cm×6cm · 128gsm · ~9 draws/day × 3 days',cat:'material',paxBased:true,ratio:27,perPaxNote:'9/day × 3 days = 27 per pax',lang:'EN',vendor:'Kadpo Industry (PG)'},
+  {code:'M7', item:'Attitudes of Wealth – Winning the Mind Game',spec:'A4 · 80gsm Golden Rod · B/W',cat:'material',paxBased:true,ratio:1.0,lang:'SPLIT',vendor:'Kadpo Industry (PG)'},
+  {code:'M8', item:'Attitudes of Wealth – Winning the Money Game',spec:'A4 · 80gsm Green · B/W',cat:'material',paxBased:true,ratio:1.0,lang:'SPLIT',vendor:'Kadpo Industry (PG)'},
+  {code:'M9', item:'Rubber Wristband – I HAVE A MILLIONAIRE MIND',spec:'Rubber',cat:'material',paxBased:true,ratio:1.0,lang:'EN',vendor:'Kadpo Industry (PG)'},
+  {code:'M10',item:'Declaration Card',spec:'2"×3.5" · 250gsm Artcard · Gloss Lam · Double Sided',cat:'material',paxBased:true,ratio:1.0,lang:'SPLIT',vendor:'Kadpo Industry (PG)'},
+  {code:'M11',item:'Handout – In the Living Years (Light Blue)',spec:'A4 · 80gsm Light Blue · B/W',cat:'material',paxBased:true,ratio:1.0,lang:'SPLIT',vendor:'Kadpo Industry (PG)'},
+  {code:'M12',item:'Handout – One Moment in Time (Light Yellow)',spec:'A4 · 80gsm Light Yellow · B/W',cat:'material',paxBased:true,ratio:1.0,lang:'SPLIT',vendor:'Kadpo Industry (PG)'},
+  // EVENT PRINT
+  {code:'EP4',item:'Name Tag – VIP',spec:'A6 · 350gsm · Matt Lam · Drill · Round Corner',cat:'ep',paxBased:true,ratio:'vip',lang:'EN',vendor:'Kadpo Industry (PG)'},
+  {code:'EP5',item:'Name Tag – Event Staff & Crew',spec:'A6 · 350gsm · Matt Lam · Drill · Round Corner',cat:'ep',paxBased:false,fixedQty:0,lang:'EN',vendor:'Kadpo Industry (PG)'},
+  {code:'EP6',item:'SR Blue Lanyard',spec:'20mm Polyester · Full Color',cat:'ep',paxBased:true,ratio:1.0,lang:'EN',vendor:'Rafflestag Malaysia'},
+  {code:'EP7',item:'VIP Lanyard',spec:'20mm Polyester · Full Color',cat:'ep',paxBased:true,ratio:'vip',lang:'EN',vendor:'Rafflestag Malaysia'},
+  {code:'EP8',item:'QL Badges',spec:'A6 · PVC · Glossy · Double Sided',cat:'ep',paxBased:true,ratio:'ql',lang:'EN',vendor:'Kadpo Industry (PG)'},
+  {code:'EP9',item:'QL Lanyards',spec:'20mm Polyester · Full Color',cat:'ep',paxBased:true,ratio:'ql',lang:'EN',vendor:'Rafflestag Malaysia'},
+  {code:'EP10',item:'QL Welcome Reception Card',spec:'Custom · 200gsm Artcard · Full Color',cat:'ep',paxBased:true,ratio:'ql',lang:'EN',vendor:'Kadpo Industry (PG)'},
+  {code:'EP11',item:'QL Welcome Letter',spec:'A4 · 250gsm Ivory Card · Full Color',cat:'ep',paxBased:true,ratio:'ql',lang:'EN',vendor:'Kadpo Industry (PG)'},
+  {code:'EP12',item:'QL Welcome Folder',spec:"12.5'×18.5' · Artcard · Full Color · Matt Lam + Pocket",cat:'ep',paxBased:true,ratio:'ql',lang:'EN',vendor:'Kadpo Industry (PG)'},
+  {code:'EP13',item:'SR Welcome Letter',spec:'A4 · 250gsm Ivory Card · Full Color',cat:'ep',paxBased:true,ratio:1.0,lang:'EN',vendor:'Kadpo Industry (PG)'},
+  {code:'C1', item:'Arrow Breaking Release Form',spec:'A4 · 80gsm · B/W',cat:'material',paxBased:true,ratio:1.0,lang:'SPLIT',vendor:'Kadpo Industry (PG)'},
+  {code:'C3', item:'Order Form (NCR)',spec:'A4 · NCR · B/W · Running no. from 0001',cat:'material',paxBased:true,ratio:1.0,lang:'EN',vendor:'—'},
+];
+
+const PACK_SECTIONS=[
+  {sec:'Stage Props',icon:'🎭',items:[
+    {code:'A1',name:'FlipChart Stand for Stage',qty:'1'},{code:'A2',name:'Flowers – Birds of Paradise (artificial)',qty:'1'},{code:'A3',name:'Vase',qty:'1'},{code:'A4',name:'Flipchart Stand',qty:'2'},{code:'A5',name:"Director's Chair",qty:'1'},{code:'A6',name:'Electric Kettle (auto shutoff)',qty:'2'},{code:'A7',name:'Thermopot',qty:'1'},{code:'A8',name:'Extension Cord',qty:'5'},{code:'A9',name:'Music Stands & Tray',qty:'2'},{code:'A10',name:'Stop Watch',qty:'3'},{code:'A11',name:'Stop Watch Batteries',qty:'1 set'},{code:'A12',name:'Peppermint & Chamomile Tea',qty:'1 box'},{code:'A13',name:'Lemons',qty:'3'},{code:'A14',name:'Honey',qty:'2 bottles'},{code:'A15',name:'Chocolate Coins',qty:'1 bag'},{code:'A16',name:'Big Bowl (for chocolate coins)',qty:'1'},{code:'A17',name:'Big Clown Sunglasses (bubble wrapped)',qty:'1'},{code:'A18',name:'Book: "Millionaire Next Door"',qty:'1',note:'From Amazon (SR)'},{code:'A19',name:'Book: AESOP Fable w/Golden Goose Story',qty:'1',note:'From Amazon (SR)'},{code:'A20',name:'EWTC Participant T-Shirt',qty:'1',note:'Get from Crew'},{code:'A21',name:'SIGNS: Anger, Shame, Sadness, Guilt, Fear',qty:'1 set',note:'A4 gloss laminated artcard'},{code:'A22',name:'Black/White Board LARGE',qty:'1 set',note:'A3 gloss lam – black one side, white other'},{code:'A23',name:'QL Props for Stage (certs, VIP tickets, vouchers)',qty:'1 set',note:'Artwork in materials folder'},{code:'A24',name:'Jars – LARGE w/labels (FFA, NEC, 2×LTSS, PLAY, GIVE, EDUC)',qty:'7 jars',note:'Transparent plastic · Labels A6'},{code:'A25',name:'RM300 Cash (3×RM100)',qty:'1 set'},
+  ]},
+  {sec:'Day 1 — Money Attachment',icon:'🔥',items:[
+    {code:'A29',name:'BBQ Lighters',qty:'6'},{code:'A30',name:'Fire Extinguisher (must be empty)',qty:'2'},{code:'A31',name:'Pails (medium size)',qty:'6'},{code:'A32',name:'Plastic Jugs',qty:'6',note:'Fill with water at venue'},{code:'A33',name:'Candles – tapered cream/white',qty:'12',note:'New only'},{code:'A34',name:'Roll of Aluminium Foil',qty:'2 rolls'},
+  ]},
+  {sec:'Day 2 — Money Magnet',icon:'🧲',items:[
+    {code:'A37',name:'A4 Zip Lock Bags',qty:'4 boxes of 15'},{code:'A38',name:'1-cent Local Currency Coins',qty:'1,000 pcs',note:'Actual coins · min 800'},
+  ]},
+  {sec:'Day 3 — Breakthrough',icon:'⚡',items:[
+    {code:'A40',name:'Arrows (28–30 inch softwood)',qty:'per pax',note:'Cedar/Fir/Spruce/Poplar · ~5/16" dia',paxDriven:true},{code:'A41',name:'Gloves',qty:'TBD'},{code:'A42',name:'Goggles',qty:'TBD'},
+  ]},
+  {sec:'Extras',icon:'📋',items:[
+    {code:'A43',name:'A1 Display Stand',qty:'1'},{code:'A44',name:'Table Display Stand',qty:'2'},{code:'A45',name:'Lucky Draw Box',qty:'1'},{code:'A46',name:'Credit Card Machines',qty:'2 each',note:'UOB · Public Bank · Maybank'},
+  ]},
+];
+
+const STAT_DATA=[
+  {n:1,item:'2-hole Puncher',base:10},{n:2,item:'3×5 Cards',base:300},{n:3,item:'A4 Paper',base:'1 ream'},{n:4,item:'Binding Tape 60mm Black',base:10},{n:5,item:'Calculator (handheld)',base:10},{n:6,item:'Call Bell',base:2},{n:7,item:'Clear Film – Pallet Packing',base:2},{n:8,item:'Clear Tape 48mm',base:20},{n:9,item:'Clipboard',base:20},{n:10,item:"2'×3' Flipchart Paper",base:'6 pads',remark:'4 stage · 2 sales'},{n:11,item:'Glue Stick',base:10},{n:12,item:'Tissue Box',base:'10 boxes'},{n:13,item:'Masking Tape 15mm',base:10},{n:14,item:'Masking Tape 24mm',base:10},{n:15,item:'Masking Tape 48mm',base:10},{n:16,item:'Paper Clips (small+large)',base:'2 boxes each'},{n:17,item:'Paper Tray',base:10},{n:18,item:'Pen – Black',base:250,scalable:true},{n:19,item:'Pen – Blue',base:250,scalable:true},{n:20,item:'Penknife',base:5},{n:21,item:'Post-it 1×2"',base:10},{n:22,item:'Post-it 3×3"',base:10},{n:23,item:'Post-it 3×5"',base:10},{n:24,item:'Rubber Bands',base:'1 big bag'},{n:25,item:'Scissors',base:10},{n:26,item:'Scotch Tape',base:10},{n:27,item:'Sharpies',base:20},{n:28,item:'Stapler – Big',base:5},{n:29,item:'Stapler – Bullet',base:40},{n:30,item:'Counter Clicker',base:3},{n:31,item:'Acrylic Stand',base:10},
+];
+
+// ═══════════════════════════════════════════════════════════════
+// INVENTORY STATE — shared pool, tracked per event
+// ═══════════════════════════════════════════════════════════════
+const inventory={};
+ITEMS.forEach(it=>{
+  inventory[it.code]={
+    stock: it.reusable ? 1 : 0,  // warehouse stock — master count, not per event
+    unit: it.cat==='material'||it.cat==='ep' ? 'pcs' : 'pc',
+    lastRestocked: '',
+    condition: it.reusable ? 'Good' : '',
+    notes: '',
+  };
+});
+
+let invFilter='all';
+let packChecked={};
+let importTarget=EVENTS[0];
+let importData=null;
+let curEv=EVENTS[0];
+
+// ═══════════════════════════════════════════════════════════════
+// PAX CALCULATION
+// ═══════════════════════════════════════════════════════════════
+function getShowRate(){return parseInt(document.getElementById('show-rate')?.value||65)/100;}
+
+function getNeededQty(item, ev){
+  // uses show-up pax (not forecast) for actual pack quantities
+  const showUp=ev.showUp||0;
+  const vip=Math.round(showUp*ev.vipPct/100);
+  const ql=Math.round(showUp*ev.qlPct/100);
+  const std=showUp-vip;
+  if(!item.paxBased) return item.fixedQty||0;
+  if(item.ratio===1.0) return showUp;
+  if(item.ratio==='vip') return vip;
+  if(item.ratio==='std') return std;
+  if(item.ratio==='ql') return ql;
+  return Math.round(showUp*(item.ratio||0));
+}
+
+// Forecasts only — inventory is a separate master warehouse
+function recalcAllocations(){
+  computeForecasts();
+  // Order calc updates lazily when tab is visible
+}
+
+// Total units allocated across all events for this item
+function getTotalAllocated(code){
+  return EVENTS.reduce((sum,ev)=>{
+    const item=ITEMS.find(i=>i.code===code);
+    if(!item) return sum;
+    return sum + getNeededForEvent(code, ev.id);
+  }, 0);
+}
+
+// How much stock remains after all events are served
+function getRemaining(code){
+  return inventory[code].stock - getTotalAllocated(code);
+}
+
+
+// How much stock is needed for a specific event (show-up basis + 5% buffer)
+function getNeededForEvent(code, evId){
+  const item=ITEMS.find(i=>i.code===code);
+  const ev=EVENTS.find(e=>e.id===evId);
+  if(!item||!ev) return 0;
+  const needed=getNeededQty(item,ev);
+  return item.reusable ? (needed>0?1:0) : Math.ceil(needed*1.05);
+}
+
+// How much still needs to be ordered for an event after offsetting warehouse stock
+function getOrderGap(code, evId){
+  const need=getNeededForEvent(code,evId);
+  const stock=inventory[code].stock;
+  if(item_is_reusable(code)) return stock>=1?0:1;
+  return Math.max(0, need-stock);
+}
+
+function item_is_reusable(code){
+  const it=ITEMS.find(i=>i.code===code);
+  return it&&it.reusable;
+}
+
+// Total needed across ALL remaining events
+function getTotalNeededAllEvents(code){
+  const item=ITEMS.find(i=>i.code===code);
+  if(!item) return 0;
+  if(item.reusable) return 1; // only need 1 unit of a reusable item ever
+  return EVENTS.reduce((sum,ev)=>sum+Math.ceil(getNeededQty(item,ev)*1.05),0);
+}
+
+function getStockStatus(code){
+  // Warehouse view — purely: do we have stock on hand or not?
+  // Event-specific offsets happen in the Order Calculator tab only.
+  const stock=inventory[code].stock;
+  const item=ITEMS.find(i=>i.code===code);
+  if(item&&item.reusable) return stock>=1?'ok':'out';
+  if(stock===0) return 'out';  // not keyed in yet or genuinely empty
+  return 'ok';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SIDEBAR
+// ═══════════════════════════════════════════════════════════════
+const dotCol={warn:'var(--amber)',alert:'var(--red)',new:'var(--purple)',tbd:'var(--text3)',ok:'var(--green)'};
+
+function buildSidebar(){
+  document.getElementById('sidebar-events').innerHTML=EVENTS.map(ev=>`
+    <div class="ev-item ${ev.id===curEv.id?'active':''}" onclick="selectEv('${ev.id}')">
+      <div class="ev-code">${ev.code}</div>
+      <div class="ev-city">${ev.city}</div>
+      <div class="ev-meta"><div class="ev-dot" style="background:${dotCol[ev.status]||'var(--text3)'}"></div><div class="ev-date-s">${ev.date}</div></div>
+      ${ev.reg!=null?`<div class="ev-pax-row"><span class="ev-pax-chip epc-reg">Reg: ${ev.reg}</span>${ev.showUp?`<span class="ev-pax-chip epc-show">Show: ~${ev.showUp}</span>`:''}</div>`:''}
+      <div class="ev-import-link" onclick="event.stopPropagation();openModalForEv('${ev.id}')">⬆ Import list</div>
+    </div>`).join('');
+  // badges
+  const outCount=ITEMS.filter(it=>getStockStatus(it.code)==='out'&&getTotalAllocated(it.code)>0).length;
+  const lowCount=ITEMS.filter(it=>getStockStatus(it.code)==='low').length;
+  const b=document.getElementById('inv-badge');
+  b.textContent=outCount>0?outCount:lowCount>0?lowCount:'✓';
+  b.className='nav-badge '+(outCount>0?'nb-red':lowCount>0?'nb-amber':'nb-green');
+  // Forecast badge — show days for the currently selected event
+  const fcb=document.getElementById('fc-badge');
+  if(curEv){
+    fcb.textContent=curEv.days+'d';
+    fcb.className='nav-badge '+(curEv.days<=30?'nb-red':curEv.days<=60?'nb-amber':'nb-green');
+    fcb.title=curEv.code+' in '+curEv.days+' days';
+  }
+}
+
+function updateTopbar(){
+  document.getElementById('tp-code').textContent=curEv.code;
+  document.getElementById('tp-city').textContent=curEv.city;
+  document.getElementById('tp-date').textContent=curEv.date;
+}
+
+function selectEv(id){
+  curEv=EVENTS.find(e=>e.id===id);
+  buildSidebar();updateTopbar();
+  renderOverview();renderForecast();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// OVERVIEW
+// ═══════════════════════════════════════════════════════════════
+function renderOverview(){
+  const totalReg=EVENTS.reduce((s,e)=>s+(e.reg||0),0);
+  const totalShow=EVENTS.reduce((s,e)=>s+(e.showUp||0),0);
+  const outItems=ITEMS.filter(it=>!it.reusable&&inventory[it.code].stock===0).length;
+  const lowItems=ITEMS.filter(it=>!it.reusable&&inventory[it.code].stock>0&&inventory[it.code].stock<getNeededForEvent(it.code,EVENTS.find(e=>e.days===Math.min(...EVENTS.map(ev=>ev.days)))?.id||'SG')).length;
+
+  document.getElementById('kpi-row').innerHTML=`
+    <div class="kpi"><div class="kpi-label">Total registered</div><div class="kpi-val" style="color:var(--accent)">${totalReg}</div><div class="kpi-sub">Across 3 events with data</div></div>
+    <div class="kpi"><div class="kpi-label">Est. total show-ups</div><div class="kpi-val" style="color:var(--green)">${totalShow||'—'}</div><div class="kpi-sub">@ 65% show-up rate</div></div>
+    <div class="kpi"><div class="kpi-label">Next event in</div><div class="kpi-val" style="color:var(--amber)">51 days</div><div class="kpi-sub">MMI-2607-SG</div></div>
+    <div class="kpi"><div class="kpi-label">Out of stock items</div><div class="kpi-val" style="color:${outItems>0?'var(--red)':'var(--green)'}">${outItems}</div><div class="kpi-sub">Needs ordering</div></div>
+    <div class="kpi"><div class="kpi-label">Low stock items</div><div class="kpi-val" style="color:${lowItems>0?'var(--amber)':'var(--green)'}">${lowItems}</div><div class="kpi-sub">Below required level</div></div>`;
+
+  document.getElementById('alert-title').textContent='SG workbooks must be ordered by 25 May — 5 days from now';
+  document.getElementById('alert-body').textContent=`Kadpo Industry needs ~2 weeks lead time. Show-up forecast for SG: ~${EVENTS[0].showUp||148} pax. July runs SG, BKK & JB back-to-back — review inventory now to avoid shortfall.`;
+
+  const chipC={warn:'c-warn',alert:'c-alert',new:'c-new',tbd:'c-tbd',ok:'c-ok'};
+  const chipL={warn:'On track',alert:'Needs push',new:'Just opened',tbd:'No data',ok:'Strong'};
+  document.getElementById('event-grid').innerHTML=EVENTS.map(ev=>{
+    const pct=ev.target?Math.min(100,Math.round((ev.forecast||0)/ev.target*100)):0;
+    const fillCol=pct>=80?'var(--accent)':pct>=50?'var(--amber)':'var(--red)';
+    const needed=ITEMS.filter(it=>it.paxBased).reduce((s,it)=>s+getNeededQty(it,ev),0);
+    const stocked=ITEMS.filter(it=>it.paxBased).reduce((s,it)=>s+Math.min(inventory[it.code].stock,getNeededQty(it,ev)),0);
+    const stockPct=needed?Math.round(stocked/needed*100):0;
+    return`<div class="ec ${ev.status==='alert'?'alert':ev.status==='warn'?'warn':''}" onclick="selectEv('${ev.id}');showPage('forecast')">
+      <div class="ec-head"><span class="ec-code">${ev.code}</span><span class="chip ${chipC[ev.status]}">${chipL[ev.status]}</span></div>
+      <div class="ec-city">${ev.city}</div>
+      <div class="ec-date">${ev.date} · ${ev.days} days away</div>
+      <div class="ec-pax-row">
+        <div class="ec-pax-box"><div class="ec-pax-l">Registered</div><div class="ec-pax-v" style="color:var(--accent)">${ev.reg??'—'}</div></div>
+        <div class="ec-pax-box"><div class="ec-pax-l">Forecast</div><div class="ec-pax-v">${ev.forecast||'—'}</div></div>
+        <div class="ec-pax-box"><div class="ec-pax-l">Show-up ~65%</div><div class="ec-pax-v" style="color:var(--green)">${ev.showUp||'—'}</div></div>
+        <div class="ec-pax-box"><div class="ec-pax-l">Target</div><div class="ec-pax-v" style="color:var(--text3)">${ev.target}</div></div>
+      </div>
+      <div class="prog-row"><span>Forecast vs target</span><span>${pct}%</span></div>
+      <div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:${fillCol}"></div></div>
+      <div class="ec-stock-row">
+        <span class="ec-stock-label">Stock coverage: <b style="color:${stockPct>=80?'var(--green)':stockPct>=50?'var(--amber)':'var(--red)'}">${stockPct}%</b> of needed items stocked</span>
+        <span class="ec-import-lnk" onclick="event.stopPropagation();openModalForEv('${ev.id}')">⬆ Import</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FORECAST PAGE
+// ═══════════════════════════════════════════════════════════════
+let fcEv=EVENTS[0];
+
+function renderForecastTabs(){
+  document.getElementById('fc-ev-tabs').innerHTML=EVENTS.map(ev=>`
+    <div class="fc-ev-tab ${ev.id===fcEv.id?'on':''}" onclick="setFcEv('${ev.id}',this)">${ev.code} · ${ev.city}</div>`).join('');
+}
+
+function setFcEv(id,el){
+  fcEv=EVENTS.find(e=>e.id===id);
+  document.querySelectorAll('.fc-ev-tab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  renderForecast();
+}
+
+function renderForecast(){
+  renderForecastTabs();
+  const ev=fcEv;
+  const sr=getShowRate();
+  const showUp=Math.round((ev.forecast||0)*sr);
+  ev.showUp=showUp;
+  const vip=Math.round(showUp*ev.vipPct/100);
+  const std=showUp-vip;
+  const ql=Math.round(showUp*ev.qlPct/100);
+
+  // Velocity chart
+  buildVelocityChart(ev);
+
+  // Forecast cards
+  document.getElementById('fc-grid').innerHTML=`
+    <div class="fc-card">
+      <div class="fc-card-title">Registration trend</div>
+      <div class="fc-big" style="color:var(--accent)">${ev.reg??'—'}</div>
+      <div class="fc-sub">Registered to date</div>
+      <div class="fc-breakdown">
+        <div class="fc-row"><span class="fc-row-label">Avg tickets/week</span><span class="fc-row-val">${ev.regWeekly.length?Math.round(ev.regWeekly.slice(-3).reduce((a,b)=>a+b,0)/Math.min(3,ev.regWeekly.length)):0}</span></div>
+        <div class="fc-row"><span class="fc-row-label">Weeks to event</span><span class="fc-row-val">${Math.round(ev.days/7)}</span></div>
+        <div class="fc-row"><span class="fc-row-label">Projected final tickets</span><span class="fc-row-val" style="color:var(--accent)">${ev.forecast||'—'}</span></div>
+        <div class="fc-row"><span class="fc-row-label">vs target (${ev.target})</span><span class="fc-row-val" style="color:${(ev.forecast||0)>=ev.target?'var(--green)':'var(--amber)'}">${ev.forecast?Math.round((ev.forecast/ev.target)*100)+'%':'—'}</span></div>
+      </div>
+    </div>
+    <div class="fc-card">
+      <div class="fc-card-title">Show-up forecast · ${Math.round(sr*100)}% rate</div>
+      <div class="fc-big" style="color:var(--green)">${showUp||'—'}</div>
+      <div class="fc-sub">Expected attendees on the day</div>
+      <div class="fc-breakdown">
+        <div class="fc-row"><span class="fc-row-label">VIP (~${ev.vipPct}%)</span><span class="fc-row-val" style="color:var(--amber)">${vip}</span></div>
+        <div class="fc-row"><span class="fc-row-label">Standard (~${100-ev.vipPct}%)</span><span class="fc-row-val">${std}</span></div>
+        <div class="fc-row"><span class="fc-row-label">QL buyers (~${ev.qlPct}%)</span><span class="fc-row-val" style="color:var(--purple)">${ql}</span></div>
+        <div class="fc-row"><span class="fc-row-label">Pack buffer (+5%)</span><span class="fc-row-val">${Math.round(showUp*1.05)||'—'}</span></div>
+      </div>
+    </div>
+    <div class="fc-card">
+      <div class="fc-card-title">Materials needed (show-up basis)</div>
+      <div class="fc-big" style="color:var(--text2)">${showUp?Math.round(showUp*1.05):'—'}</div>
+      <div class="fc-sub">Units to pack (with 5% buffer)</div>
+      <div class="fc-breakdown">
+        <div class="fc-row"><span class="fc-row-label">Workbooks (×2 per pax)</span><span class="fc-row-val">${showUp?Math.round(showUp*1.05)*2:'—'}</span></div>
+        <div class="fc-row"><span class="fc-row-label">$500 Cert (×2 per pax)</span><span class="fc-row-val" style="color:var(--amber)">${showUp?Math.round(showUp*1.05)*2:'—'}</span></div>
+        <div class="fc-row"><span class="fc-row-label">Lucky Draw (×27 per pax)</span><span class="fc-row-val" style="color:var(--amber)">${showUp?Math.round(showUp*1.05)*27:'—'}</span></div>
+        <div class="fc-row"><span class="fc-row-label">Wristbands (×1 per pax)</span><span class="fc-row-val">${showUp?Math.round(showUp*1.05):'—'}</span></div>
+        <div class="fc-row"><span class="fc-row-label">Arrows (Day 3)</span><span class="fc-row-val">${showUp||'—'}</span></div>
+      </div>
+    </div>`;
+
+  recalcAllocations();
+  buildSidebar();
+  renderInventory();
+}
+
+function buildVelocityChart(ev){
+  const wrap=document.getElementById('velocity-chart');
+  if(!ev.reg||!ev.regWeekly.length){
+    wrap.innerHTML=`<div class="vc-title">Weekly ticket sales velocity · ${ev.code}</div><div style="font-size:12px;color:var(--text3);margin-top:6px">Import a registration file to see velocity trend and projection.</div>`;
+    return;
+  }
+  const weeks=ev.regWeekly;const labels=ev.regWeeks;
+  const maxW=Math.max(...weeks,1);
+  const avgRecent=Math.round(weeks.slice(-3).reduce((a,b)=>a+b,0)/Math.min(3,weeks.length));
+  const weeksLeft=Math.max(0,Math.round(ev.days/7)-1);
+  const fcWeeks=Array.from({length:Math.min(weeksLeft,6)},(_,i)=>Math.max(1,Math.round(avgRecent*(1-i*0.08))));
+  const fcLabels=Array.from({length:fcWeeks.length},(_,i)=>`W+${i+1}`);
+  const allMax=Math.max(maxW,...fcWeeks,1);
+
+  const actualBars=weeks.map((v,i)=>`
+    <div class="vc-bar-wrap">
+      <div class="vc-bar actual" style="height:${Math.round(v/allMax*72)}px;" title="${labels[i]}: ${v} tickets"></div>
+      <div class="vc-label">${labels[i]}</div>
+    </div>`).join('');
+  const fcBars=fcWeeks.map((v,i)=>`
+    <div class="vc-bar-wrap">
+      <div class="vc-bar forecast" style="height:${Math.round(v/allMax*72)}px;" title="${fcLabels[i]}: ~${v} est."></div>
+      <div class="vc-label" style="color:rgba(79,142,247,0.5)">${fcLabels[i]}</div>
+    </div>`).join('');
+
+  wrap.innerHTML=`
+    <div class="vc-title">Weekly ticket sales velocity · ${ev.code} · Avg last 3 weeks: ${avgRecent}/wk</div>
+    <div class="vc-bars">${actualBars}${fcBars}</div>
+    <div class="vc-legend">
+      <span><span class="vc-leg-dot" style="background:var(--accent)"></span>Actual sales</span>
+      <span><span class="vc-leg-dot" style="background:rgba(79,142,247,0.3);border:1px dashed rgba(79,142,247,0.6)"></span>Projected (tapering)</span>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INVENTORY
+// ═══════════════════════════════════════════════════════════════
+function setInvFilter(f){invFilter=f;renderInventory();}
+
+function renderInvSummary(){
+  const total=ITEMS.length;
+  const reusableCount=ITEMS.filter(it=>it.reusable).length;
+  const consumableCount=ITEMS.filter(it=>!it.reusable).length;
+  const stocked=ITEMS.filter(it=>inventory[it.code].stock>0).length;
+  const notStocked=ITEMS.filter(it=>inventory[it.code].stock===0).length;
+  const totalUnits=ITEMS.filter(it=>!it.reusable).reduce((s,it)=>s+inventory[it.code].stock,0);
+  document.getElementById('inv-sum').innerHTML=`
+    <div class="is"><div class="is-l">Total line items</div><div class="is-v">${total}</div></div>
+    <div class="is"><div class="is-l">♻ Reusable items</div><div class="is-v" style="color:var(--teal)">${reusableCount}</div></div>
+    <div class="is"><div class="is-l">📦 Consumable items</div><div class="is-v" style="color:var(--text2)">${consumableCount}</div></div>
+    <div class="is"><div class="is-l">Items with stock</div><div class="is-v" style="color:var(--green)">${stocked}</div></div>
+    <div class="is"><div class="is-l">Not keyed in yet</div><div class="is-v" style="color:${notStocked>0?'var(--amber)':'var(--text3)'}">${notStocked}</div></div>
+    <div class="is"><div class="is-l">Total consumable units</div><div class="is-v" style="color:var(--accent)">${totalUnits.toLocaleString()}</div></div>`;
+}
+
+function renderInventory(){
+  renderInvSummary();
+  const search=(document.getElementById('inv-search')?.value||'').toLowerCase();
+  const catLabels={banner:'Banners & Signage',material:'Materials & Handouts',ep:'Event Print & Lanyards'};
+  let lastCat='';const rows=[];
+
+  ITEMS.forEach(it=>{
+    const inv=inventory[it.code];
+    const status=getStockStatus(it.code);
+    const total=getTotalAllocated(it.code);
+    const remaining=getRemaining(it.code);
+
+    const matchSearch=!search||it.item.toLowerCase().includes(search)||it.code.toLowerCase().includes(search);
+    const matchFilter=invFilter==='all'
+      ||(invFilter==='out'&&status==='out')
+      ||(invFilter==='low'&&status==='low')
+      ||(invFilter==='ok'&&status==='ok')
+      ||(invFilter==='reusable'&&it.reusable)
+      ||(invFilter==='consumable'&&!it.reusable);
+    if(!matchSearch||!matchFilter)return;
+
+    if(it.cat!==lastCat){rows.push(`<tr class="sec-row"><td colspan="11">${catLabels[it.cat]}</td></tr>`);lastCat=it.cat;}
+
+    // status determined by getStockStatus
+
+    // Warehouse status: purely about whether stock exists
+    const warehouseStatus = it.reusable
+      ? (inv.stock>=1 ? 'ok' : 'out')
+      : (inv.stock>0  ? 'ok' : 'out');
+    const statusChipMap={
+      ok: it.reusable
+        ? `<span class="stock-status ss-ok">♻ Have it</span>`
+        : `<span class="stock-status ss-ok">✓ In stock</span>`,
+      out: `<span class="stock-status ss-out">✕ Not stocked</span>`,
+    };
+    const statusChipFinal=statusChipMap[warehouseStatus]||statusChipMap.out;
+    const condOpts=['Good','Fair','Damaged','Needs replacement'].map(o=>`<option ${inv.condition===o?'selected':''}>${o}</option>`).join('');
+    rows.push(`<tr>
+      <td><span class="code-tag">${it.code}</span></td>
+      <td><div class="item-name">${it.item}</div><div class="item-spec">${it.spec}</div>${it.perPaxNote?`<div style="font-size:10px;color:var(--amber);margin-top:2px;font-weight:500">✕ ${it.perPaxNote}</div>`:''}</td>
+      <td style="text-align:center">
+        ${it.reusable
+          ? '<span class="reusable-tag">♻ Reusable</span>'
+          : '<span class="consumable-tag">📦 Consumable</span>'
+        }
+      </td>
+      <td style="text-align:center">
+        <input class="stock-input" type="number" min="0" data-code="${it.code}" value="${inv.stock}"
+          onchange="setStock('${it.code}',+this.value)"/>
+        ${it.reusable ? '<div style="font-size:9px;color:var(--teal);margin-top:2px">♻ reusable</div>' : ''}
+      </td>
+      <td style="text-align:center">
+        <input class="cell-input unit-input" type="text" style="width:52px;text-align:center;"
+          value="${inv.unit}" oninput="setInvField('${it.code}','unit',this.value)"/>
+      </td>
+      <td style="text-align:center">
+        <input class="cell-input" type="date" style="width:118px;font-size:11px;"
+          value="${inv.lastRestocked}" oninput="setInvField('${it.code}','lastRestocked',this.value)"/>
+      </td>
+      <td>
+        ${it.reusable
+          ? `<select class="sel" style="width:140px" onchange="setInvField('${it.code}','condition',this.value)">${condOpts}</select>`
+          : '<span style="color:var(--text3);font-size:11px">—</span>'
+        }
+      </td>
+      <td>
+        <input class="cell-input" type="text" style="width:138px;" placeholder="Notes…"
+          value="${inv.notes}" oninput="setInvField('${it.code}','notes',this.value)"/>
+      </td>
+      <td style="font-size:11px;color:var(--text3);white-space:nowrap">${it.vendor}</td>
+    </tr>`);
+  });
+
+  document.getElementById('inv-tbody').innerHTML=rows.join('')||
+    `<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:28px">No items match.</td></tr>`;
+}
+
+function setStock(code,val){
+  inventory[code].stock=Math.max(0,val||0);
+  recalcAllocations();
+  renderInvSummary();
+  buildSidebar();
+  saveInventoryQuiet(); // auto-save on stock change too
+}
+
+// ── INV TAB SWITCHER ──
+function switchInvTab(tab, el){
+  document.querySelectorAll('.inv-subtab').forEach(t=>{
+    t.style.borderBottomColor='transparent';
+    t.style.color='var(--text2)';
+  });
+  el.style.borderBottomColor='var(--accent)';
+  el.style.color='var(--accent)';
+  document.getElementById('inv-tab-warehouse').style.display    = tab==='warehouse'   ?'flex':'none';
+  document.getElementById('inv-tab-procurement').style.display  = tab==='procurement' ?'flex':'none';
+  document.getElementById('inv-tab-order').style.display        = tab==='order'       ?'flex':'none';
+  if(tab==='order') renderOrderCalc();
+  if(tab==='procurement') renderProcurement();
+}
+
+// ── ORDER CALC FILTER ──
+let ocFilter='all';
+function setOcFilter(f, el){
+  ocFilter=f;
+  document.querySelectorAll('[onclick^="setOcFilter"]').forEach(b=>b.classList.remove('primary'));
+  el.classList.add('primary');
+  renderOrderCalc();
+}
+
+// ── STOCK OFFSET LOGIC ──
+// For each event, calculate: need, cover from stock, to order, remaining after
+function getOrderCalcRow(item, ev){
+  const need = item.reusable ? (item.fixedQty||1) : Math.ceil(getNeededQty(item,ev)*1.05);
+  const stock = inventory[item.code].stock;
+  const onOrder = inventory[item.code].ordered || 0;  // qty already placed with vendor
+  const coverFromStock = Math.min(stock, need);
+  // Gap after using existing stock
+  const gapAfterStock = Math.max(0, need - stock);
+  // Of that gap, how much is already on order
+  const coveredByOrder = Math.min(onOrder, gapAfterStock);
+  // What's truly still missing
+  const stillToOrder = Math.max(0, gapAfterStock - coveredByOrder);
+  const remainingAfter = Math.max(0, stock - need);
+  return { need, stock, onOrder, coverFromStock, coveredByOrder, stillToOrder, remainingAfter };
+}
+
+// ── RENDER ORDER CALCULATOR ──
+function renderOrderCalc(){
+  const evId = document.getElementById('oc-ev-sel')?.value || 'SG';
+  const ev = EVENTS.find(e=>e.id===evId);
+  if(!ev){ return; }
+
+  const showUp = ev.showUp || 0;
+  const buffered = Math.ceil(showUp*1.05);
+  document.getElementById('oc-pax-note').textContent =
+    ev.reg
+      ? `Reg: ${ev.reg} · Forecast: ${ev.forecast||'—'} · Show-up @65%: ~${showUp} · Pack qty (+5%): ${buffered}`
+      : 'No registration data — import a list first';
+
+  const catLabels={banner:'Banners & Signage',material:'Materials & Handouts',ep:'Event Print & Lanyards'};
+  let lastCat=''; const rows=[];
+  let totalNeed=0, totalCovered=0, totalOnOrder=0, totalStillToOrder=0, itemsToOrder=0;
+
+  ITEMS.forEach(it=>{
+    const r = getOrderCalcRow(it, ev);
+    totalNeed += r.need;
+    totalCovered += r.coverFromStock;
+    totalOnOrder += r.onOrder;
+    totalStillToOrder += r.stillToOrder;
+    if(r.stillToOrder > 0) itemsToOrder++;
+
+    const matchFilter =
+      ocFilter==='all' ||
+      (ocFilter==='toorder' && r.stillToOrder>0) ||
+      (ocFilter==='covered' && r.stillToOrder===0);
+    if(!matchFilter) return;
+
+    if(it.cat!==lastCat){
+      rows.push(`<tr class="sec-row"><td colspan="9">${catLabels[it.cat]}</td></tr>`);
+      lastCat=it.cat;
+    }
+
+    // Status based on stillToOrder (true remaining gap)
+    const statusEl = r.stillToOrder===0
+      ? (it.reusable
+          ? '<span class="stock-status ss-ok">♻ Have it</span>'
+          : r.onOrder>0
+            ? '<span class="stock-status ss-ok">✓ On order</span>'
+            : '<span class="stock-status ss-ok">✓ Covered</span>')
+      : r.coverFromStock>0||r.onOrder>0
+        ? '<span class="stock-status ss-low">⚠ Partial</span>'
+        : '<span class="stock-status ss-out">✕ Order all</span>';
+
+    const rowBg = r.stillToOrder>0
+      ? 'background:rgba(240,78,78,0.03)'
+      : r.onOrder>0
+        ? 'background:rgba(245,166,35,0.03)'
+        : '';
+
+    rows.push(`<tr style="${rowBg}">
+      <td><span class="code-tag">${it.code}</span></td>
+      <td><div class="item-name">${it.item}</div><div class="item-spec">${it.spec}</div></td>
+      <td style="text-align:center">
+        <span style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--text2)">${r.need}</span>
+      </td>
+      <td style="text-align:center">
+        <span style="font-family:var(--mono);font-size:14px;font-weight:700;color:${r.stock>0?'var(--accent)':'var(--text3)'}">${r.stock||'—'}</span>
+      </td>
+      <td style="text-align:center">
+        ${r.onOrder>0
+          ? `<span style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--amber)">${r.onOrder}</span>
+             <div style="font-size:9px;color:var(--amber)">🚚 pending</div>`
+          : '<span style="color:var(--text3);font-size:12px">—</span>'
+        }
+      </td>
+      <td style="text-align:center">
+        <span style="font-family:var(--mono);font-size:14px;font-weight:700;color:${r.stillToOrder>0?'var(--red)':'var(--text3)'}">${r.stillToOrder>0?r.stillToOrder:'—'}</span>
+        ${r.stillToOrder===0&&r.onOrder>0?'<div style="font-size:9px;color:var(--green)">fully covered</div>':''}
+      </td>
+      <td style="text-align:center">
+        <span style="font-family:var(--mono);font-size:13px;color:${r.remainingAfter>0?'var(--teal)':'var(--text3)'}">${r.remainingAfter||'—'}</span>
+      </td>
+      <td>${statusEl}</td>
+      <td style="font-size:11px;color:var(--text3);white-space:nowrap">${it.vendor}</td>
+    </tr>`);
+  });
+
+  document.getElementById('oc-tbody').innerHTML = rows.join('') ||
+    `<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:28px">No items match.</td></tr>`;
+
+  // Summary strip
+  const coverPct = totalNeed ? Math.round((totalCovered+totalOnOrder)/totalNeed*100) : 0;
+  document.getElementById('oc-summary').innerHTML=`
+    <div class="is"><div class="is-l">Needed for event</div><div class="is-v" style="color:var(--text2)">${totalNeed}<div style="font-size:9px;color:var(--text3);font-weight:400">show-up +5% buffer</div></div></div>
+    <div class="is"><div class="is-l">✓ From warehouse</div><div class="is-v" style="color:var(--green)">${totalCovered}<div style="font-size:9px;color:var(--text3);font-weight:400">stock on hand</div></div></div>
+    <div class="is"><div class="is-l">🚚 On order</div><div class="is-v" style="color:var(--amber)">${totalOnOrder}<div style="font-size:9px;color:var(--text3);font-weight:400">pending arrival</div></div></div>
+    <div class="is"><div class="is-l">🖨 Still to order</div><div class="is-v" style="color:${totalStillToOrder>0?'var(--red)':'var(--green)'}">${totalStillToOrder}<div style="font-size:9px;color:var(--text3);font-weight:400">${totalStillToOrder===0?'nothing left':'units needed'}</div></div></div>
+    <div class="is"><div class="is-l">Overall coverage</div><div class="is-v" style="color:${coverPct>=100?'var(--green)':coverPct>=60?'var(--amber)':'var(--red)'}">${coverPct}%<div style="font-size:9px;color:var(--text3);font-weight:400">stock + on order</div></div></div>`;
+}
+
+// ── EXPORT ORDER CALC ──
+function exportOrderCalc(){
+  const evId = document.getElementById('oc-ev-sel')?.value || 'SG';
+  const ev = EVENTS.find(e=>e.id===evId);
+  const headers=['Code','Item','Need (show-up+5%)','Warehouse Stock','Cover from Stock','TO ORDER','Remaining After','Status','Vendor'];
+  const rows=[headers];
+  let grandOrder=0;
+  ITEMS.forEach(it=>{
+    const r=getOrderCalcRow(it,ev);
+    grandOrder+=r.stillToOrder||0;
+    rows.push([it.code,it.item,r.need,r.stock,r.coverFromStock,r.stillToOrder||'',r.remainingAfter,(r.stillToOrder||0)===0?'Covered':'ORDER',it.vendor]);
+  });
+  rows.push([]);
+  rows.push(['','TOTAL TO ORDER',grandOrder,'','','','','','']);
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:8},{wch:42},{wch:14},{wch:14},{wch:16},{wch:12},{wch:14},{wch:10},{wch:22}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,`Order_${evId}`);
+  XLSX.writeFile(wb,`LOME_OrderList_${evId}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+function setInvField(code,field,val){
+  inventory[code][field]=val;
+  // auto-save condition/notes to localStorage
+  saveInventory();
+}
+
+function saveInventory(){
+  saveInventoryQuiet();
+  showToast('💾 Saved!');
+}
+
+function getInventoryPayload(){
+  const data={};
+  ITEMS.forEach(it=>{
+    const inv=inventory[it.code];
+    data[it.code]={
+      stock:        inv.stock        ?? (it.reusable?1:0),
+      ordered:      inv.ordered      || 0,
+      orderStatus:  inv.orderStatus  || '',
+      orderDate:    inv.orderDate    || '',
+      orderNotes:   inv.orderNotes   || '',
+      unit:         inv.unit         || (it.cat==='material'||it.cat==='ep'?'pcs':'pc'),
+      lastRestocked:inv.lastRestocked|| '',
+      condition:    inv.condition    || (it.reusable?'Good':''),
+      notes:        inv.notes        || '',
+    };
+  });
+  return data;
+}
+
+function applyInventoryData(data){
+  ITEMS.forEach(it=>{
+    const d=data[it.code];
+    if(d===undefined||d===null) return;
+    if(typeof d==='number'){ inventory[it.code].stock=d; return; } // legacy localStorage format
+    if(typeof d.stock==='number')        inventory[it.code].stock        = d.stock;
+    if(typeof d.ordered==='number')      inventory[it.code].ordered      = d.ordered;
+    if(d.orderStatus!==undefined)        inventory[it.code].orderStatus  = d.orderStatus;
+    if(d.orderDate!==undefined)          inventory[it.code].orderDate    = d.orderDate;
+    if(d.orderNotes!==undefined)         inventory[it.code].orderNotes   = d.orderNotes;
+    if(d.unit)                           inventory[it.code].unit         = d.unit;
+    if(d.lastRestocked)                  inventory[it.code].lastRestocked= d.lastRestocked;
+    if(d.condition!==undefined)          inventory[it.code].condition    = d.condition;
+    if(d.notes!==undefined)              inventory[it.code].notes        = d.notes;
+  });
+}
+
+function saveInventoryQuiet(){
+  const data=getInventoryPayload();
+  try{localStorage.setItem('lome_inventory',JSON.stringify(data));}catch(e){}
+  scheduleCloudSave();
+}
+
+function loadInventory(){
+  try{
+    const raw=localStorage.getItem('lome_inventory');
+    if(!raw) return;
+    applyInventoryData(JSON.parse(raw));
+  }catch(e){ console.error('loadInventory:', e); }
+}
+
+function exportInventory(){
+  const headers=['Code','Item','Type','Warehouse Stock','Unit','Last Restocked','Condition','Notes','Vendor',
+    'SG Needs','BKK Needs','JB Needs','KL Needs','SG Order Gap','BKK Order Gap','JB Order Gap','KL Order Gap'];
+  const rows=[headers];
+  ITEMS.forEach(it=>{
+    const inv2=inventory[it.code];
+    const evNeeds=EVENTS.map(ev=>getNeededForEvent(it.code,ev.id));
+    const evGaps=EVENTS.map(ev=>getOrderGap(it.code,ev.id));
+    rows.push([
+      it.code, it.item,
+      it.reusable?'Reusable':'Consumable',
+      inv2.stock, inv2.unit, inv2.lastRestocked, inv2.condition||'—', inv2.notes,
+      it.vendor,
+      ...evNeeds,
+      ...evGaps,
+    ]);
+  });
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:8},{wch:40},{wch:12},{wch:14},{wch:6},{wch:14},{wch:14},{wch:24},{wch:22},{wch:10},{wch:10},{wch:10},{wch:10},{wch:12},{wch:12},{wch:12},{wch:12}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Warehouse');
+  XLSX.writeFile(wb,`LOME_Warehouse_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PACKING PLAN — driven by show-up pax + stock check
+// ═══════════════════════════════════════════════════════════════
+function renderPackingPlan(){
+  const evId=document.getElementById('pack-ev-sel').value;
+  const ev=EVENTS.find(e=>e.id===evId);
+  const showUp=ev.showUp||0;
+  const buffered=Math.round(showUp*1.05);
+
+  document.getElementById('pack-pax-note').textContent=
+    ev.reg?`Registered: ${ev.reg} · Forecast: ${ev.forecast} · Show-up @65%: ~${showUp} · Pack qty (5% buf): ${buffered}`:'No registration data — import a list first';
+
+  const allItems=PACK_SECTIONS.flatMap(s=>s.items);
+  const done=allItems.filter(i=>packChecked[evId+'_'+i.code]).length;
+  document.getElementById('pack-prog-fill').style.width=(allItems.length?Math.round(done/allItems.length*100):0)+'%';
+  document.getElementById('pack-prog-count').textContent=`${done} / ${allItems.length} packed`;
+
+  document.getElementById('pack-grid').innerHTML=PACK_SECTIONS.map(sec=>{
+    const secDone=sec.items.filter(i=>packChecked[evId+'_'+i.code]).length;
+    return`<div class="pack-sec">
+      <div class="pack-sec-hd">
+        <span style="font-size:15px">${sec.icon}</span>
+        <span class="pack-sec-title">${sec.sec}</span>
+        <span class="pack-sec-cnt">${secDone}/${sec.items.length}</span>
+      </div>
+      ${sec.items.map(it=>{
+        // check if this item has a matching print item in inventory
+        const matchCode=it.code.startsWith('A')?null:it.code;
+        const matchItem=matchCode?ITEMS.find(pi=>pi.code===matchCode):null;
+        let qtyDisplay=it.paxDriven?`${showUp} arrows`:(it.qty==='per pax'?`${showUp} pcs`:it.qty);
+        let stockBadge='';
+        if(matchItem){
+          const need=getNeededForEvent(matchItem.code,evId);
+          const stock=inventory[matchItem.code].stock;
+          const gap=getOrderGap(matchItem.code,evId);
+          if(gap===0){
+            stockBadge=`<span class="pack-stock-badge psb-ok">Stock: ${stock} ✓</span>`;
+          } else {
+            stockBadge=`<span class="pack-stock-badge psb-out">Order ${gap} more</span>`;
+          }
+          qtyDisplay=need||it.qty;
+        }
+        const ck=packChecked[evId+'_'+it.code];
+        return`<div class="pack-row" onclick="togglePack('${evId}','${it.code}')">
+          <div class="pack-chk ${ck?'done':''}">${ck?'✓':''}</div>
+          <div class="pack-body">
+            <div class="pack-name" style="${ck?'text-decoration:line-through;color:var(--text3)':''}">${it.name}</div>
+            ${it.note?`<div class="pack-note">${it.note}</div>`:''}
+          </div>
+          <div class="pack-right">
+            <div class="pack-qty-row"><span class="pack-qty">${qtyDisplay}</span>${stockBadge}</div>
+            <div class="pack-code">${it.code}</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+}
+
+function togglePack(evId,code){
+  const key=evId+'_'+code;
+  packChecked[key]=!packChecked[key];
+  renderPackingPlan();
+}
+
+function resetPack(){packChecked={};renderPackingPlan();}
+
+function exportPackingPlan(){
+  const evId=document.getElementById('pack-ev-sel').value;
+  const ev=EVENTS.find(e=>e.id===evId);
+  const rows=[['Code','Item','Pack Qty','Stock on Hand','Status','Notes']];
+  PACK_SECTIONS.forEach(sec=>{
+    rows.push([sec.sec,'','','','','']);
+    sec.items.forEach(it=>{
+      const matchItem=ITEMS.find(pi=>pi.code===it.code);
+      const stock=matchItem?inventory[matchItem.code].stock:'-';
+      const alloc=matchItem?getNeededForEvent(matchItem.code,evId):'-';
+      const ck=packChecked[evId+'_'+it.code]?'✓ Packed':'— Pending';
+      rows.push([it.code,it.name,alloc||it.qty,stock,ck,it.note||'']);
+    });
+  });
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:8},{wch:40},{wch:10},{wch:14},{wch:10},{wch:30}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,`Pack_${evId}`);
+  XLSX.writeFile(wb,`LOME_PackingPlan_${evId}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STATIONERY
+// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// PROCUREMENT TRACKER
+// ═══════════════════════════════════════════════════════════════
+let procFilter = 'all';
+
+function setProcFilter(f, el){
+  procFilter = f;
+  document.querySelectorAll('#inv-tab-procurement .btn').forEach(b=>b.classList.remove('primary'));
+  if(el) el.classList.add('primary');
+  renderProcurement();
+}
+
+function renderProcurement(){
+  const catLabels={banner:'Banners & Signage',material:'Materials & Handouts',ep:'Event Print & Lanyards'};
+  let lastCat=''; const rows=[];
+  let totalOrdered=0, totalPending=0, totalReceived=0, totalOrderedUnits=0;
+
+  ITEMS.forEach(it=>{
+    const inv=inventory[it.code];
+    const status=inv.orderStatus||'';
+    if(status==='ordered')   totalOrdered++;
+    if(status==='received')  totalReceived++;
+    if(!status)              totalPending++;
+    if(inv.ordered>0)        totalOrderedUnits+=inv.ordered;
+
+    const matchFilter=
+      procFilter==='all'||
+      (procFilter==='ordered'  && status==='ordered')||
+      (procFilter==='received' && status==='received')||
+      (procFilter==='pending'  && !status);
+    if(!matchFilter) return;
+
+    if(it.cat!==lastCat){rows.push(`<tr class="sec-row"><td colspan="8">${catLabels[it.cat]}</td></tr>`);lastCat=it.cat;}
+
+    const statusCls=status==='ordered'?'ordered':status==='received'?'received':'';
+    const canReceive=status==='ordered'&&inv.ordered>0;
+
+    rows.push(`<tr style="${status==='ordered'?'background:rgba(245,166,35,0.03)':status==='received'?'background:rgba(45,212,122,0.03)':''}">
+      <td><span class="code-tag">${it.code}</span></td>
+      <td><div class="item-name">${it.item}</div><div class="item-spec">${it.spec}</div></td>
+      <td style="text-align:center"><span style="font-family:var(--mono);font-size:13px;font-weight:700;color:${inv.stock>0?'var(--accent)':'var(--text3)'}">${inv.stock}</span></td>
+      <td style="text-align:center">
+        <input class="stock-input" type="number" min="0" style="width:70px" value="${inv.ordered||0}"
+          onchange="setProcField('${it.code}','ordered',+this.value)"/>
+      </td>
+      <td>
+        <select class="proc-status ${statusCls}" onchange="setProcField('${it.code}','orderStatus',this.value);this.className='proc-status '+this.value">
+          <option value="" ${!status?'selected':''}>— Not ordered</option>
+          <option value="ordered"  ${status==='ordered' ?'selected':''}>🚚 Ordered</option>
+          <option value="received" ${status==='received'?'selected':''}>✅ Received</option>
+        </select>
+      </td>
+      <td>
+        <input class="proc-input" type="date" value="${inv.orderDate||''}"
+          onchange="setProcField('${it.code}','orderDate',this.value)"/>
+      </td>
+      <td>
+        <input class="proc-input" type="text" placeholder="Vendor ref, PO no…" value="${inv.orderNotes||''}"
+          oninput="setProcField('${it.code}','orderNotes',this.value)"/>
+      </td>
+      <td>
+        ${canReceive
+          ? `<button class="recv-btn" onclick="receiveOrder('${it.code}')">✓ Mark received</button>`
+          : status==='received'
+            ? `<span style="font-size:11px;color:var(--green)">✅ Stock updated</span>`
+            : `<button class="recv-btn" disabled>Mark received</button>`
+        }
+      </td>
+    </tr>`);
+  });
+
+  document.getElementById('proc-tbody').innerHTML=rows.join('')||
+    `<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:28px">No items match.</td></tr>`;
+
+  document.getElementById('proc-sum').innerHTML=`
+    <div class="is"><div class="is-l">🚚 On order</div><div class="is-v" style="color:var(--amber)">${totalOrdered}</div></div>
+    <div class="is"><div class="is-l">✅ Received</div><div class="is-v" style="color:var(--green)">${totalReceived}</div></div>
+    <div class="is"><div class="is-l">⏳ Not yet ordered</div><div class="is-v" style="color:var(--text3)">${totalPending}</div></div>
+    <div class="is"><div class="is-l">Total units on order</div><div class="is-v" style="color:var(--accent)">${totalOrderedUnits.toLocaleString()}</div></div>`;
+}
+
+function setProcField(code, field, val){
+  inventory[code][field]=val;
+  // Auto-set order date if marking as ordered and no date set
+  if(field==='orderStatus'&&val==='ordered'&&!inventory[code].orderDate){
+    inventory[code].orderDate=new Date().toISOString().slice(0,10);
+  }
+  // Auto-save on every change so nothing is lost on refresh
+  saveInventoryQuiet();
+}
+
+function receiveOrder(code){
+  const inv=inventory[code];
+  const qty=inv.ordered||0;
+  if(qty===0){showToast('Set the ordered quantity first');return;}
+  // Add ordered qty to warehouse stock
+  inv.stock+=qty;
+  inv.orderStatus='received';
+  inv.ordered=0;
+  recalcAllocations();
+  renderProcurement();
+  renderInventory();
+  renderInvSummary();
+  buildSidebar();
+  saveInventory();
+  showToast(`✅ ${qty} units received — warehouse stock updated`);
+}
+
+function renderStat(){
+  const pax=parseInt(document.getElementById('stat-pax').value)||148;
+  document.getElementById('stat-tbody').innerHTML=STAT_DATA.map(s=>{
+    const scaled=s.scalable&&typeof s.base==='number'?Math.ceil(pax/250*s.base):s.base;const isUp=s.scalable&&typeof s.base==='number'&&scaled>s.base;
+    return`<tr><td style="color:var(--text3);font-family:var(--mono);font-size:11px">${s.n}</td><td><div class="item-name">${s.item}</div></td><td style="text-align:center"><span style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text2)">${s.base}</span></td><td style="text-align:center"><span style="font-family:var(--mono);font-size:13px;font-weight:600;color:${isUp?'var(--green)':'var(--text2)'}">${scaled}</span>${isUp?'<span style="font-size:9px;color:var(--green);margin-left:3px">↑</span>':''}</td><td style="font-size:11px;color:var(--text3)">${s.remark||'—'}</td></tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// IMPORT MODAL
+// ═══════════════════════════════════════════════════════════════
+function openModal(){
+  importTarget=curEv;importData=null;
+  buildModalTabs();resetPreview();
+  document.getElementById('file-input').value='';
+  document.getElementById('import-modal').classList.add('show');
+}
+
+function openModalForEv(id){importTarget=EVENTS.find(e=>e.id===id);openModal();}
+
+function closeModal(){document.getElementById('import-modal').classList.remove('show');importData=null;}
+
+function buildModalTabs(){
+  document.getElementById('modal-ev-tabs').innerHTML=EVENTS.map(ev=>`
+    <div class="ev-tab ${ev.id===importTarget.id?'on':''}" onclick="setImportEv('${ev.id}',this)">${ev.code}</div>`).join('');
+}
+
+function setImportEv(id,el){
+  importTarget=EVENTS.find(e=>e.id===id);
+  document.querySelectorAll('.ev-tab').forEach(t=>t.classList.remove('on'));el.classList.add('on');
+  resetPreview();importData=null;document.getElementById('file-input').value='';
+}
+
+function resetPreview(){
+  document.getElementById('preview-box').classList.remove('show');
+  const ab=document.getElementById('apply-btn');ab.disabled=true;ab.style.opacity='.4';ab.style.cursor='not-allowed';
+}
+
+function processFile(file){
+  if(!file||!file.name.match(/\.xlsx?$/i)){alert('Please upload an .xlsx file');return;}
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      const sheetName=wb.SheetNames.find(s=>s.toLowerCase().includes('full list'))||wb.SheetNames[0];
+      const ws=wb.Sheets[sheetName];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      const hIdx=rows.findIndex(r=>r.some(c=>String(c).toLowerCase().includes('lead source')));
+      const headers=rows[hIdx>=0?hIdx:0].map(c=>String(c).toLowerCase().trim());
+      const lsCol=headers.findIndex(h=>h.includes('lead source'));
+      const dataRows=rows.slice((hIdx>=0?hIdx:0)+1).filter(r=>r.some(c=>String(c).trim()));
+      let total=0,vip=0,std=0,ql=0,thai=0;
+      // Weekly buckets by date
+      const weeklyMap={};
+      const dateCol=headers.findIndex(h=>h.includes('date'));
+      dataRows.forEach(r=>{
+        const ls=lsCol>=0?String(r[lsCol]||'').toLowerCase():'';
+        if(!ls||ls.includes('refund'))return;
+        total++;
+        if(ls.includes('vip'))vip++;else std++;
+        if(ls.startsWith('[ql]'))ql++;
+        if(ls.includes('thai'))thai++;
+        // Parse date for weekly
+        if(dateCol>=0&&r[dateCol]){
+          try{
+            let d;
+            if(typeof r[dateCol]==='number'){d=new Date(Math.round((r[dateCol]-25569)*864e5));}
+            else{d=new Date(r[dateCol]);}
+            if(!isNaN(d)){
+              const yr=d.getFullYear();const wk=Math.ceil((((d-new Date(yr,0,1))/864e5)+new Date(yr,0,1).getDay()+1)/7);
+              const key=`${yr}-W${String(wk).padStart(2,'0')}`;
+              weeklyMap[key]=(weeklyMap[key]||0)+1;
+            }
+          }catch(e){}
+        }
+      });
+      if(vip+std<total)std=total-vip;
+      const vipPct=total>0?Math.round(vip/total*100):38;
+      const thaiPct=thai>0?Math.round(thai/total*100):0;
+      const sortedWeeks=Object.keys(weeklyMap).sort();
+      const weeklyArr=sortedWeeks.map(k=>weeklyMap[k]);
+      importData={total,vip,std,ql,vipPct,thaiPct,weeklyArr,weeklyLabels:sortedWeeks,filename:file.name};
+      document.getElementById('preview-grid').innerHTML=`
+        <div class="pv-s"><div class="pv-l">Registered</div><div class="pv-v" style="color:var(--accent)">${total}</div></div>
+        <div class="pv-s"><div class="pv-l">VIP</div><div class="pv-v" style="color:var(--amber)">${vip}</div></div>
+        <div class="pv-s"><div class="pv-l">Standard</div><div class="pv-v">${std}</div></div>
+        <div class="pv-s"><div class="pv-l">QL Buyers</div><div class="pv-v" style="color:var(--purple)">${ql}</div></div>`;
+      const avgVel=weeklyArr.length?Math.round(weeklyArr.slice(-3).reduce((a,b)=>a+b,0)/Math.min(3,weeklyArr.length)):0;
+      const sr=getShowRate();
+      const weeksLeft=Math.max(0,importTarget.days/7-1);
+      const projFinal=Math.round(total+avgVel*weeksLeft);
+      const projShow=Math.round(projFinal*sr);
+      document.getElementById('preview-detail').innerHTML=
+        `<b>VIP ratio:</b> ${vipPct}% &nbsp;·&nbsp; <b>Avg velocity:</b> ${avgVel}/week &nbsp;·&nbsp; <b>Projected final:</b> ${projFinal} tickets<br/>`+
+        `<b>Show-up forecast (@${Math.round(sr*100)}%):</b> <span style="color:var(--green);font-weight:600">~${projShow} pax</span>`+
+        (thai>0?` &nbsp;·&nbsp; <b>Thai pref:</b> ${thai} (${thaiPct}%)`:'');
+      document.getElementById('preview-log').innerHTML=`✓ Sheet: "${sheetName}" &nbsp;·&nbsp; ${weeklyArr.length} weekly buckets &nbsp;·&nbsp; ${file.name}`;
+      document.getElementById('preview-box').classList.add('show');
+      const ab=document.getElementById('apply-btn');ab.disabled=false;ab.style.opacity='1';ab.style.cursor='pointer';
+    }catch(err){alert('Error reading file: '+err.message);}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function applyImport(){
+  if(!importData)return;
+  const ev=importTarget;
+  ev.reg=importData.total;ev.vipPct=importData.vipPct;
+  if(importData.weeklyArr.length){ev.regWeekly=importData.weeklyArr;ev.regWeeks=importData.weeklyLabels;}
+  if(importData.thaiPct>0&&ev.isBKK)ev.thaiPct=importData.thaiPct;
+  ev.lastImport=new Date().toLocaleString();
+  ev.status=importData.total<80?'alert':importData.total<200?'warn':'ok';
+  computeForecasts();recalcAllocations();
+  closeModal();
+  buildSidebar();updateTopbar();
+  renderOverview();renderForecast();renderInventory();renderOrderCalc();
+  showToast(`${ev.code} updated · ${importData.total} registered · ~${ev.showUp} show-up forecast`);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════════════════════
+function exportXlsx(){
+  const headers=['Event Name','Event Date','Venue / City','Section','Item / Material','Catalog ID','Specs','Required Qty (Show-up)','Stock on Hand','Remaining Stock','Status','Vendor'];
+  const rows=[headers];
+  EVENTS.forEach(ev=>{
+    ITEMS.forEach(it=>{
+      const need=getNeededQty(it,ev);
+      const stock=inventory[it.code].stock;
+      rows.push([ev.code,ev.date,ev.city,it.cat,it.item,it.code,it.spec,need,stock,stock-need,getStockStatus(it.code),it.vendor]);
+    });
+  });
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'LOME Plan');
+  XLSX.writeFile(wb,`LOME_Full_Plan_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════════
+function preventScrollJump(el){
+  // Save scroll position of the tbl-wrap container and restore after focus
+  const wrap = el.closest('.tbl-wrap');
+  if(!wrap) return;
+  const top = wrap.scrollTop;
+  requestAnimationFrame(()=>{ wrap.scrollTop = top; });
+}
+
+function showToast(msg){
+  let t=document.getElementById('toast');
+  if(!t){t=document.createElement('div');t.id='toast';t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg1);border:1px solid var(--border2);border-radius:8px;padding:10px 18px;font-size:12px;color:var(--text);z-index:200;box-shadow:0 4px 20px rgba(0,0,0,0.4);transition:opacity .3s;pointer-events:none;';document.body.appendChild(t);}
+  t.textContent=msg;t.style.opacity='1';
+  clearTimeout(t._to);t._to=setTimeout(()=>{t.style.opacity='0';},3000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════════════════════════
+function showPage(id,navEl){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(navEl instanceof Element)navEl.classList.add('active');
+  else document.querySelectorAll('.nav-item').forEach(n=>{
+    const map={overview:'Over',forecast:'Fore',inventory:'Inven',packing:'Pack',stationery:'Stat',ai:'Emergency'};
+    if(n.textContent.trim().startsWith(map[id]))n.classList.add('active');
+  });
+  document.getElementById('topbar-title').textContent={overview:'Overview',forecast:'Forecast & Registration',inventory:'Warehouse & Stock',packing:'Packing Plan',stationery:'Stationery',ai:'Emergency Vendors'}[id];
+  if(id==='forecast')renderForecast();
+  if(id==='inventory')renderInventory();
+  if(id==='packing')renderPackingPlan();
+  if(id==='stationery')renderStat();
+  if(id==='ai')buildMatChips();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded',()=>{
+  loadInventory();
+  initFirebaseLiveSync();
+  loadSyncConfig();
+  computeForecasts();
+  recalcAllocations();
+  buildSidebar();updateTopbar();
+  renderOverview();
+  renderForecastTabs();
+  renderStat();
+  updateSyncBtn();
+  runAutoSyncs(); // auto-sync any connected events on open
+  document.getElementById('import-modal').addEventListener('click',e=>{if(e.target===document.getElementById('import-modal'))closeModal();});
+  // drop zone drag handlers inline
+  const dz=document.getElementById('drop-zone');
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');if(e.dataTransfer.files[0])processFile(e.dataTransfer.files[0]);});
+});
+
+// ═══════════════════════════════════════════════════════════════
+// AI ASSISTANT
+// ═══════════════════════════════════════════════════════════════
+const AI_CITIES={SG:'Singapore',BKK:'Bangkok, Thailand',JB:'Johor Bahru, Malaysia',KL:'Kuala Lumpur, Malaysia'};
+const AI_CURRENCIES={SG:'SGD',BKK:'Thai Baht (THB)',JB:'Malaysian Ringgit (MYR)',KL:'Malaysian Ringgit (MYR)'};
+
+function switchAiTab(tab,el){
+  document.querySelectorAll('.ai-tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.ai-sub').forEach(s=>s.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('ai-sub-'+tab).classList.add('on');
+  if(tab==='materials') buildMatChips();
+}
+
+const EMERGENCY_VENDORS = [
+  {
+    name: "Syarikat Ruby Stationery",
+    phone: "+60182725876",
+    waNumber: "60182725876",
+    category: ["stationery", "office supplies", "pens", "markers", "paper", "tape", "clips", "scissors", "flipchart", "general supplies", "emergency event supplies"],
+    location: "Malaysia",
+    area: "Malaysia / general stationery supplier",
+    bestFor: "Stationery, office supplies, pens, markers, paper, tape and general emergency event supplies.",
+    urgency: "Good for quick stock checks and general emergency purchases.",
+    notes: "Use when the item is general stationery or basic event supplies rather than custom printing."
+  },
+  {
+    name: "Printlaju Penang",
+    phone: "+60183499335",
+    waNumber: "60183499335",
+    category: ["printing", "urgent printing", "event printing", "banners", "handouts", "name tags", "cards", "lanyards", "wristbands", "workbooks", "declaration cards", "lucky draw tickets", "certificates", "folders"],
+    location: "Penang, Malaysia",
+    area: "Penang",
+    bestFor: "Urgent printing, banners, handouts, name tags, cards, event print materials and print-related emergencies.",
+    urgency: "Best first contact for Malaysia printing emergencies, especially Penang/Northern region.",
+    notes: "Call/WhatsApp first with quantity, deadline, artwork status and pickup/delivery needs."
+  }
+];
+
+function buildMatChips(){
+  const items=[
+    ['Urgent printing','urgent printing handouts name tags cards banners'],
+    ['Stationery','pens markers paper tape scissors general stationery'],
+    ['Workbooks','printing workbooks A4 perfect bound'],
+    ['Wristbands','event wristbands synthetic printing'],
+    ['Lanyards','polyester lanyards printing'],
+    ['Name tags','name tag card printing laminated'],
+    ['Banners','large format banner printing'],
+    ['Declaration cards','card printing artcard glossy laminated'],
+    ['Lucky draw tickets','numbered tickets printing'],
+    ['Flipchart paper','flipchart paper pads markers'],
+    ['Pens & markers','ballpoint pens sharpies markers wholesale'],
+    ['Tape & scissors','masking tape clear tape scissors stationery'],
+  ];
+  document.getElementById('mat-chips').innerHTML=items.map(([label,q])=>
+    `<div class="mat-chip" onclick="selectChip(this,'${q}')">${label}</div>`
+  ).join('');
+}
+
+function selectChip(el,q){
+  document.querySelectorAll('.mat-chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('m-query').value=q;
+}
+
+function makeLink(url,label,emoji){
+  return `<a href="${url}" target="_blank" rel="noopener" class="btn">${emoji} ${label}</a>`;
+}
+
+function googleSearchUrl(q){ return 'https://www.google.com/search?q=' + encodeURIComponent(q); }
+function googleMapsUrl(q){ return 'https://www.google.com/maps/search/' + encodeURIComponent(q); }
+function whatsappUrl(number, message){ return `https://wa.me/${number}?text=${encodeURIComponent(message)}`; }
+
+function normalizeText(s){ return String(s||'').toLowerCase(); }
+
+function scoreVendor(vendor, query, evId){
+  const q=normalizeText(query);
+  let score=0;
+  vendor.category.forEach(cat=>{
+    if(q.includes(cat)) score+=20;
+    cat.split(/\s+/).forEach(word=>{ if(word.length>3 && q.includes(word)) score+=5; });
+  });
+  if(/print|banner|tag|lanyard|wristband|workbook|certificate|ticket|card|folder|handout/.test(q) && vendor.name.toLowerCase().includes('print')) score+=30;
+  if(/stationery|pen|marker|paper|tape|scissor|clip|flipchart|office/.test(q) && vendor.name.toLowerCase().includes('stationery')) score+=30;
+  if((evId==='KL'||evId==='JB') && vendor.location.includes('Malaysia')) score+=10;
+  if(vendor.location.includes('Penang')) score+=5;
+  return score;
+}
+
+function buildVendorMessage(vendor, query, ev){
+  const city = AI_CITIES[ev.id] || ev.city || 'Malaysia';
+  const eventLine = `${ev.code || 'MMI event'} in ${city}`;
+  const showUpLine = ev.showUp ? `Estimated attendees: ${ev.showUp} pax.` : '';
+  return `Hi ${vendor.name}, I’m from Success Resources. We are preparing for ${eventLine} and urgently need: ${query}. ${showUpLine}\n\nCan you please confirm:\n1. Whether you have stock / can prepare this urgently;\n2. Earliest pickup or delivery time;\n3. Price estimate;\n4. Payment method; and\n5. Any artwork/spec requirements if printing is needed.\n\nThank you.`;
+}
+
+function copyText(text){
+  navigator.clipboard?.writeText(text).then(()=>showToast('Copied message ✓')).catch(()=>{
+    const ta=document.createElement('textarea');
+    ta.value=text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    showToast('Copied message ✓');
+  });
+}
+
+function renderVendorCard(vendor, query, ev, rank){
+  const msg=buildVendorMessage(vendor, query, ev);
+  const score=scoreVendor(vendor, query, ev.id);
+  const best=rank===0?'best':'';
+  const mapsQ=`${vendor.name} ${vendor.area}`;
+  const searchQ=`${vendor.name} ${vendor.phone}`;
+  return `<div class="vendor-card ${best}">
+    <div class="vendor-head">
+      <div class="vendor-name">${escapeHTML(vendor.name)}</div>
+      <div class="vendor-score">${rank===0?'Best match':'Match'} ${score}</div>
+    </div>
+    <div class="vendor-meta">
+      <b style="color:var(--text)">Phone:</b> ${escapeHTML(vendor.phone)}<br>
+      <b style="color:var(--text)">Area:</b> ${escapeHTML(vendor.area)}<br>
+      <b style="color:var(--text)">Best for:</b> ${escapeHTML(vendor.bestFor)}<br>
+      <b style="color:var(--text)">Urgency:</b> ${escapeHTML(vendor.urgency)}
+    </div>
+    <div class="vendor-tags">${vendor.category.slice(0,8).map(c=>`<span class="vendor-tag">${escapeHTML(c)}</span>`).join('')}</div>
+    <div class="vendor-message" id="msg-${vendor.waNumber}">${escapeHTML(msg).replace(/\n/g,'<br>')}</div>
+    <div class="vendor-actions">
+      <a class="btn success" href="${whatsappUrl(vendor.waNumber,msg)}" target="_blank" rel="noopener">💬 WhatsApp</a>
+      <a class="btn" href="tel:${vendor.phone}">☎️ Call</a>
+      <button class="btn" onclick='copyText(${JSON.stringify(msg)})'>📋 Copy message</button>
+      ${makeLink(googleMapsUrl(mapsQ),'Maps','🗺')}
+      ${makeLink(googleSearchUrl(searchQ),'Search','🔍')}
+    </div>
+  </div>`;
+}
+
+function runVenueSearch(){
+  const evId=document.getElementById('v-event').value;
+  const city=AI_CITIES[evId];
+  const shortCity=city.split(',')[0];
+  const pax=document.getElementById('v-pax').value||'300';
+  const type=document.getElementById('v-type').value;
+  const budget=document.getElementById('v-budget').value;
+  const notes=document.getElementById('v-notes').value.trim();
+  const el=document.getElementById('v-result');
+
+  const venueQueries=[
+    `${type} ${shortCity} ${pax} pax event venue`,
+    `hotel ballroom ${shortCity} ${pax} pax seminar`,
+    `conference venue ${shortCity} ${pax} pax AV stage`,
+    `corporate seminar venue ${shortCity} 3 day event`,
+    `${shortCity} event venue ballroom capacity ${pax}`
+  ];
+
+  const mapsLinks=venueQueries.slice(0,4).map((q,i)=>makeLink(googleMapsUrl(q),`Maps ${i+1}`,'🗺')).join('');
+  const searchLinks=venueQueries.map((q,i)=>makeLink(googleSearchUrl(q),`Search ${i+1}`,'🔍')).join('');
+  const emailQuery=`${type} ${shortCity} event sales contact ${pax} pax ballroom`;
+
+  el.innerHTML=`
+    <div style="font-size:11px;color:var(--text3);margin-bottom:12px">✦ Search pack for <b style="color:var(--text)">${shortCity}</b> · ${pax} pax · ${type} · ${budget}</div>
+    <div class="ai-response">
+      <b style="color:var(--text)">Venue sourcing checklist:</b><br>
+      1. Open the Maps links and shortlist venues within your event area.<br>
+      2. Check ballroom capacity for at least <b style="color:var(--text)">${pax}</b> pax, preferably with buffer.<br>
+      3. Ask for 3-day seminar package, AV/stage/screen setup, registration foyer space, F&B policy, parking, loading bay and storage room.<br>
+      4. Priority fit: <b style="color:var(--text)">${type}</b>, budget level: <b style="color:var(--text)">${budget}</b>${notes?`, extra notes: <b style="color:var(--text)">${escapeHTML(notes)}</b>`:''}.<br><br>
+      <b style="color:var(--text)">Best search terms generated:</b><br>
+      ${venueQueries.map(q=>`• ${escapeHTML(q)}`).join('<br>')}
+    </div>
+    <div class="ai-action-row">${mapsLinks}</div>
+    <div class="ai-action-row">${searchLinks}${makeLink(googleSearchUrl(emailQuery),'Find sales contacts','☎️')}</div>`;
+}
+
+function runMaterialsSearch(){
+  const evId=document.getElementById('m-event').value;
+  const ev=EVENTS.find(e=>e.id===evId) || {id:evId, code:'MMI Event', city:AI_CITIES[evId], showUp:0};
+  const city=AI_CITIES[evId];
+  const shortCity=city.split(',')[0];
+  const currency=AI_CURRENCIES[evId];
+  const query=document.getElementById('m-query').value.trim();
+  if(!query){showToast('Please describe what you need');return;}
+  const el=document.getElementById('m-result');
+
+  const ranked=[...EMERGENCY_VENDORS].map(v=>({v,score:scoreVendor(v,query,evId)})).sort((a,b)=>b.score-a.score);
+  const best=ranked[0];
+  const searches=[
+    `${query} ${shortCity}`,
+    `urgent ${query} supplier ${shortCity}`,
+    `same day ${query} ${shortCity}`,
+    `printing shop ${query} ${shortCity}`,
+    `stationery supplier ${query} ${shortCity}`
+  ];
+
+  el.innerHTML=`
+    <div style="font-size:11px;color:var(--text3);margin-bottom:12px">✦ Emergency vendor match for <b style="color:var(--text)">${escapeHTML(query)}</b> · ${shortCity}</div>
+    <div class="priority-box">
+      <b style="color:var(--text)">Recommended first action:</b><br>
+      Contact <b style="color:var(--green)">${escapeHTML(best.v.name)}</b> first. ${escapeHTML(best.v.notes)}<br>
+      Currency reference: <b style="color:var(--text)">${currency}</b>. If this is same-day urgent, WhatsApp first, then call if no response within 10–15 minutes.
+    </div>
+    <div class="vendor-grid">
+      ${ranked.map((x,i)=>renderVendorCard(x.v, query, ev, i)).join('')}
+    </div>
+    <div class="ai-response" style="margin-top:12px">
+      <b style="color:var(--text)">Fallback search links if both vendors cannot fulfil:</b><br>
+      ${searches.map(q=>`• ${escapeHTML(q)}`).join('<br>')}
+    </div>
+    <div class="ai-action-row">
+      ${makeLink(googleMapsUrl(searches[0]),'Maps fallback','🗺')}
+      ${makeLink(googleSearchUrl(searches[1]),'Google fallback','🔍')}
+    </div>`;
+}
+
+function escapeHTML(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function fmtAI(text){
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<b style="color:var(--text)">$1</b>')
+    .replace(/^#{1,3}\s+(.+)$/gm,'<b style="color:var(--text);font-size:13px">$1</b>')
+    .replace(/\n/g,'<br>');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LIVE SYNC — Google Sheets CSV
+// ═══════════════════════════════════════════════════════════════
+
+// syncConfig: { evId: { url, autoSync, lastSync } }
+let syncConfig = {};
+let syncTarget = EVENTS[0];
+
+function loadSyncConfig(){
+  try{ syncConfig = JSON.parse(localStorage.getItem('lome_sync')||'{}'); }
+  catch(e){ syncConfig = {}; }
+}
+
+function saveSyncConfig(){
+  try{ localStorage.setItem('lome_sync', JSON.stringify(syncConfig)); }
+  catch(e){}
+}
+
+function openSyncModal(){
+  syncTarget = curEv;
+  buildSyncTabs();
+  loadSyncUrlToInput();
+  buildSyncConnections();
+  // Load auto-sync setting
+  const cfg = syncConfig[syncTarget.id] || {};
+  document.getElementById('auto-sync-chk').checked = cfg.autoSync || false;
+  document.getElementById('sync-status').style.display = 'none';
+  document.getElementById('sync-modal').classList.add('show');
+}
+
+function closeSyncModal(){
+  document.getElementById('sync-modal').classList.remove('show');
+}
+
+function buildSyncTabs(){
+  document.getElementById('sync-ev-tabs').innerHTML = EVENTS.map(ev => `
+    <div class="ev-tab ${ev.id===syncTarget.id?'on':''}" onclick="setSyncTarget('${ev.id}',this)">
+      ${ev.code}
+      ${syncConfig[ev.id]?.url ? '<span style="color:var(--green);margin-left:4px">●</span>' : ''}
+    </div>`).join('');
+}
+
+function setSyncTarget(id, el){
+  syncTarget = EVENTS.find(e=>e.id===id);
+  document.querySelectorAll('#sync-ev-tabs .ev-tab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  loadSyncUrlToInput();
+  document.getElementById('auto-sync-chk').checked = syncConfig[id]?.autoSync || false;
+  document.getElementById('sync-status').style.display = 'none';
+}
+
+function loadSyncUrlToInput(){
+  const cfg = syncConfig[syncTarget.id] || {};
+  const inp = document.getElementById('sync-url-input');
+  inp.value = cfg.url || '';
+  const note = document.getElementById('sync-url-saved');
+  note.textContent = cfg.lastSync ? `Last synced: ${cfg.lastSync}` : cfg.url ? 'URL saved — click Sync now' : '';
+  note.style.color = cfg.lastSync ? 'var(--green)' : 'var(--text3)';
+}
+
+function saveSyncUrl(){
+  const url = document.getElementById('sync-url-input').value.trim();
+  if(!syncConfig[syncTarget.id]) syncConfig[syncTarget.id] = {};
+  syncConfig[syncTarget.id].url = url;
+  saveSyncConfig();
+  buildSyncConnections();
+  buildSyncTabs();
+}
+
+function toggleAutoSync(){
+  const on = document.getElementById('auto-sync-chk').checked;
+  if(!syncConfig[syncTarget.id]) syncConfig[syncTarget.id] = {};
+  syncConfig[syncTarget.id].autoSync = on;
+  saveSyncConfig();
+}
+
+function buildSyncConnections(){
+  const el = document.getElementById('sync-connections');
+  const connected = EVENTS.filter(ev => syncConfig[ev.id]?.url);
+  if(!connected.length){
+    el.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:8px 0;">No connections set up yet. Paste a URL above to get started.</div>';
+    return;
+  }
+  el.innerHTML = connected.map(ev => {
+    const cfg = syncConfig[ev.id];
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg2);border-radius:var(--radius);border:1px solid var(--border);">
+      <span class="ev-pax-chip epc-reg" style="flex-shrink:0;">${ev.code}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:11px;font-family:var(--mono);color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${cfg.url}</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px;">${cfg.lastSync?'Last sync: '+cfg.lastSync:'Never synced'} ${cfg.autoSync?'· auto-sync on':'·'}</div>
+      </div>
+      <button class="btn" style="font-size:11px;padding:4px 10px;flex-shrink:0;" onclick="quickSync('${ev.id}')">🔄 Sync</button>
+      <button class="btn" style="font-size:11px;padding:4px 8px;flex-shrink:0;color:var(--red);" onclick="removeSync('${ev.id}')">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function removeSync(evId){
+  delete syncConfig[evId];
+  saveSyncConfig();
+  buildSyncTabs();
+  buildSyncConnections();
+  loadSyncUrlToInput();
+}
+
+// ── CORE SYNC FUNCTION ────────────────────────────────────────
+async function runSync(){
+  const url = document.getElementById('sync-url-input').value.trim();
+  if(!url){
+    showSyncStatus('error','No URL entered. Paste your published Google Sheets CSV URL above.');
+    return;
+  }
+  await doSync(syncTarget, url, true);
+}
+
+async function quickSync(evId){
+  const ev = EVENTS.find(e=>e.id===evId);
+  const url = syncConfig[evId]?.url;
+  if(!ev||!url) return;
+  await doSync(ev, url, false);
+}
+
+async function doSync(ev, url, showInModal){
+  const btn = document.getElementById('sync-run-btn');
+  if(btn){ btn.textContent='⏳ Syncing…'; btn.disabled=true; }
+  if(showInModal) showSyncStatus('loading','⏳ Fetching latest data from Google Sheets…');
+
+  try{
+    const raw = await fetchCSV(url, showInModal);
+    if(!raw) throw new Error('No data returned from sheet');
+
+    // Apps Script returns JSON directly
+    let parsed;
+    try{
+      const json = JSON.parse(raw);
+      // Convert Apps Script JSON format to our parsed format
+      parsed = convertAppsScriptResponse(json, ev);
+    } catch(e){
+      // Fallback: try parsing as CSV
+      parsed = parseRegistrationCSV(raw, ev);
+    }
+
+    ev.reg = parsed.total;
+    ev.vipPct = parsed.vipPct || ev.vipPct;
+    if(parsed.weeklyArr.length){ ev.regWeekly = parsed.weeklyArr; ev.regWeeks = parsed.weeklyLabels; }
+    if(parsed.thaiPct>0 && ev.isBKK) ev.thaiPct = parsed.thaiPct;
+    ev.lastImport = new Date().toLocaleString();
+    ev.status = parsed.total<80?'alert':parsed.total<200?'warn':'ok';
+
+    if(!syncConfig[ev.id]) syncConfig[ev.id] = {};
+    syncConfig[ev.id].url = url;
+    syncConfig[ev.id].lastSync = new Date().toLocaleString();
+    syncConfig[ev.id].lastCount = parsed.total;
+    saveSyncConfig();
+
+    computeForecasts(); recalcAllocations();
+    buildSidebar(); updateTopbar();
+    renderOverview(); renderForecast(); renderInventory();
+
+    const msg = `✓ Synced ${ev.code} · ${parsed.total} registered · VIP: ${parsed.vip} · QL: ${parsed.ql} · Show-up forecast: ~${ev.showUp}`;
+    if(showInModal){
+      showSyncStatus('success', msg);
+      buildSyncConnections();
+      loadSyncUrlToInput();
+      buildSyncTabs();
+    }
+    showToast(`🔄 ${ev.code} synced · ${parsed.total} registered`);
+    updateSyncBtn();
+
+  } catch(err){
+    let errMsg = err.message;
+    if(err.message==='PUBLISHED_URL') errMsg='⚠ This is a "Publish to web" CSV URL — these are blocked by browsers. You need to use a Google Apps Script URL instead. See the setup guide in the sync modal.';
+    else if(err.name==='TimeoutError'||err.message.includes('timeout')) errMsg='Request timed out. Check your internet connection and that the Apps Script URL is correct.';
+    else if(err.message.includes('Failed to fetch')||err.message.includes('NetworkError')||err.message.includes('Could not reach')) errMsg=err.message;
+    if(showInModal) showSyncStatus('error','✕ Sync failed: ' + errMsg);
+    showToast('Sync failed — ' + errMsg);
+    console.error('Sync error:', err);
+  } finally {
+    if(btn){ btn.textContent='🔄 Sync now'; btn.disabled=false; }
+  }
+}
+
+// Fetch via Google Apps Script web app URL (the only reliable CORS-safe method)
+async function fetchCSV(url, showInModal){
+  if(showInModal) showSyncStatus('loading','⏳ Connecting to Google Sheets…');
+  if(url.includes('/pub?') || url.includes('output=csv')){
+    throw new Error('PUBLISHED_URL');
+  }
+
+  // Strategy 1: Direct fetch with redirect follow (works for Apps Script)
+  try{
+    const res = await fetch(url, {
+      method: 'GET',
+      redirect: 'follow',
+      signal: AbortSignal.timeout(15000)
+    });
+    const text = await res.text();
+    if(text && text.trim().startsWith('{') && text.length > 5){
+      console.log('Direct fetch succeeded');
+      return text;
+    }
+  } catch(e){ console.log('Direct fetch failed:', e.message); }
+
+  // Strategy 2: corsproxy.io
+  if(showInModal) showSyncStatus('loading','⏳ Trying via proxy…');
+  try{
+    const p1 = 'https://corsproxy.io/?' + encodeURIComponent(url);
+    const res = await fetch(p1, { signal: AbortSignal.timeout(12000) });
+    const text = await res.text();
+    if(text && text.trim().startsWith('{') && text.length > 5){
+      console.log('corsproxy succeeded');
+      return text;
+    }
+  } catch(e){ console.log('corsproxy failed:', e.message); }
+
+  // Strategy 3: allorigins
+  try{
+    const p2 = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+    const res = await fetch(p2, { signal: AbortSignal.timeout(12000) });
+    const json = await res.json();
+    const text = json.contents || '';
+    if(text && text.trim().startsWith('{') && text.length > 5){
+      console.log('allorigins succeeded');
+      return text;
+    }
+  } catch(e){ console.log('allorigins failed:', e.message); }
+
+  throw new Error('Could not reach your Apps Script. Make sure it is deployed with "Who has access: Anyone" — see setup guide.');
+}
+
+// ── CONVERT APPS SCRIPT JSON RESPONSE ───────────────────────
+function convertAppsScriptResponse(json, ev){
+  const weekly = json.weekly || {};
+  const sortedWks = Object.keys(weekly).sort();
+  return {
+    total:       json.total   || 0,
+    vip:         json.vip     || 0,
+    std:         json.std     || 0,
+    ql:          json.ql      || 0,
+    vipPct:      json.vipPct  || ev.vipPct || 38,
+    thaiPct:     json.thaiPct || 0,
+    weeklyArr:   sortedWks.map(k => weekly[k]),
+    weeklyLabels:sortedWks,
+  };
+}
+
+// ── PARSE CSV FROM GOOGLE SHEETS (fallback) ───────────────────────────────
+function parseRegistrationCSV(csv, ev){
+  const lines = csv.split(/\r?\n/);
+  if(!lines.length) return {total:0,vip:0,std:0,ql:0,vipPct:38,thaiPct:0,weeklyArr:[],weeklyLabels:[]};
+
+  // Find header row (contains "Lead Source" or "Name")
+  let headerIdx = lines.findIndex(l => l.toLowerCase().includes('lead source') || l.toLowerCase().includes('name'));
+  if(headerIdx < 0) headerIdx = 0;
+
+  const headers = parseCSVRow(lines[headerIdx]).map(h=>h.toLowerCase().trim());
+  const lsCol   = headers.findIndex(h=>h.includes('lead source'));
+  const dateCol = headers.findIndex(h=>h.includes('date') || h.includes('purchase'));
+
+  let total=0, vip=0, std=0, ql=0, thai=0;
+  const weeklyMap = {};
+
+  for(let i=headerIdx+1; i<lines.length; i++){
+    const row = parseCSVRow(lines[i]);
+    if(!row.length || !row.some(c=>c.trim())) continue;
+    const ls = lsCol>=0 ? row[lsCol].toLowerCase().trim() : '';
+    if(!ls || ls.includes('refund')) continue;
+    total++;
+    if(ls.includes('vip')) vip++; else std++;
+    if(ls.startsWith('[ql]') || ls.includes('ql')) ql++;
+    if(ls.includes('thai')) thai++;
+    // Weekly bucketing
+    if(dateCol>=0 && row[dateCol]){
+      try{
+        const d = new Date(row[dateCol]);
+        if(!isNaN(d)){
+          const yr=d.getFullYear(), wk=Math.ceil((((d-new Date(yr,0,1))/864e5)+new Date(yr,0,1).getDay()+1)/7);
+          const key=`${yr}-W${String(wk).padStart(2,'0')}`;
+          weeklyMap[key]=(weeklyMap[key]||0)+1;
+        }
+      }catch(e){}
+    }
+  }
+
+  if(vip+std < total) std = total - vip;
+  const vipPct   = total>0 ? Math.round(vip/total*100) : ev.vipPct||38;
+  const thaiPct  = thai>0  ? Math.round(thai/total*100) : 0;
+  const sortedWks = Object.keys(weeklyMap).sort();
+  return { total, vip, std, ql, vipPct, thaiPct, weeklyArr: sortedWks.map(k=>weeklyMap[k]), weeklyLabels: sortedWks };
+}
+
+// Simple CSV row parser (handles quoted fields)
+function parseCSVRow(line){
+  const result=[]; let cur='', inQ=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(c==='"'){ if(inQ && line[i+1]==='"'){cur+='"';i++;} else inQ=!inQ; }
+    else if(c===','&&!inQ){ result.push(cur.trim()); cur=''; }
+    else cur+=c;
+  }
+  result.push(cur.trim());
+  return result;
+}
+
+// ── SYNC STATUS DISPLAY ───────────────────────────────────────
+function showSyncStatus(type, msg){
+  const el = document.getElementById('sync-status');
+  const styles = {
+    loading: 'background:var(--bg2);border:1px solid var(--border);color:var(--text2);',
+    success: 'background:rgba(45,212,122,0.08);border:1px solid rgba(45,212,122,0.2);color:var(--green);',
+    error:   'background:rgba(240,78,78,0.08);border:1px solid rgba(240,78,78,0.2);color:var(--red);',
+  };
+  el.style.cssText = styles[type] + 'border-radius:var(--radius);padding:11px 14px;font-size:12px;line-height:1.8;margin-bottom:12px;display:block;';
+  el.textContent = msg;
+}
+
+function copyAppsScript(){
+  const el = document.getElementById('apps-script-code');
+  // Decode HTML entities for copy
+  const text = el.innerText;
+  navigator.clipboard.writeText(text).then(()=>{
+    showToast('✓ Apps Script code copied to clipboard');
+  }).catch(()=>{
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('✓ Apps Script code copied');
+  });
+}
+
+function updateSyncBtn(){
+  const btn = document.getElementById('sync-btn');
+  if(!btn) return;
+  const connected = EVENTS.filter(ev=>syncConfig[ev.id]?.url).length;
+  btn.textContent = connected ? `🔄 Live sync (${connected})` : '🔄 Live sync';
+}
+
+// ── AUTO SYNC ON OPEN ─────────────────────────────────────────
+async function runAutoSyncs(){
+  const toSync = EVENTS.filter(ev => syncConfig[ev.id]?.url && syncConfig[ev.id]?.autoSync);
+  if(!toSync.length) return;
+  showToast(`⏳ Auto-syncing ${toSync.length} event${toSync.length>1?'s':''}…`);
+  for(const ev of toSync){
+    await doSync(ev, syncConfig[ev.id].url, false);
+    await new Promise(r=>setTimeout(r,500)); // small delay between requests
+  }
+}
+
+// Close on overlay click
+document.addEventListener('DOMContentLoaded', ()=>{
+  document.getElementById('sync-modal').addEventListener('click', e=>{
+    if(e.target===document.getElementById('sync-modal')) closeSyncModal();
+  });
+});
+
+</script>
+</body>
+</html>
