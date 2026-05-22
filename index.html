@@ -869,13 +869,21 @@ function initFirebaseLiveSync(){
         return;
       }
       const data = snap.data() || {};
+      cloudApplyingRemote = true;
       if(data.inventory){
-        cloudApplyingRemote = true;
         applyInventoryData(data.inventory);
         try{ localStorage.setItem('lome_inventory', JSON.stringify(data.inventory)); }catch(e){}
-        refreshAllInventoryViews();
-        cloudApplyingRemote = false;
       }
+      if(data.events){
+        applyEventsData(data.events);
+        try{ localStorage.setItem('lome_events', JSON.stringify(data.events)); }catch(e){}
+      }
+      if(data.syncConfig){
+        syncConfig = data.syncConfig || {};
+        try{ localStorage.setItem('lome_sync', JSON.stringify(syncConfig)); }catch(e){}
+      }
+      refreshAllSharedViews();
+      cloudApplyingRemote = false;
     }, err=>{
       console.error('Firestore sync error:', err);
       showToast('⚠ Cloud sync error — check Firestore rules');
@@ -900,6 +908,8 @@ function scheduleCloudSave(){
     try{
       await cloudInventoryRef.set({
         inventory: getInventoryPayload(),
+        events: getEventsPayload(),
+        syncConfig: syncConfig || {},
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
         updatedBy: getClientLabel()
       }, { merge:true });
@@ -918,6 +928,28 @@ function refreshAllInventoryViews(){
     if(document.getElementById('inv-tab-order')?.style.display==='flex') renderOrderCalc();
     buildSidebar();
   }catch(e){ console.warn('refreshAllInventoryViews:', e); }
+}
+
+function refreshAllSharedViews(){
+  try{
+    computeForecasts();
+    recalcAllocations();
+    buildSidebar();
+    updateTopbar();
+    renderOverview();
+    renderForecast();
+    renderInventory();
+    if(document.getElementById('inv-tab-procurement')?.style.display==='flex') renderProcurement();
+    if(document.getElementById('inv-tab-order')?.style.display==='flex') renderOrderCalc();
+    if(document.getElementById('page-packing')?.classList.contains('active')) renderPackingPlan();
+    if(document.getElementById('sync-modal')?.classList.contains('show')){
+      buildSyncTabs();
+      loadSyncUrlToInput();
+      buildSyncConnections();
+      document.getElementById('auto-sync-chk').checked = syncConfig[syncTarget.id]?.autoSync || false;
+    }
+    updateSyncBtn();
+  }catch(e){ console.warn('refreshAllSharedViews:', e); }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1637,6 +1669,55 @@ function applyInventoryData(data){
   });
 }
 
+function getEventsPayload(){
+  const data={};
+  EVENTS.forEach(ev=>{
+    data[ev.id]={
+      reg: ev.reg,
+      regWeekly: Array.isArray(ev.regWeekly) ? ev.regWeekly : [],
+      regWeeks: Array.isArray(ev.regWeeks) ? ev.regWeeks : [],
+      forecast: ev.forecast || 0,
+      showUp: ev.showUp || 0,
+      vipPct: ev.vipPct || 0,
+      qlPct: ev.qlPct || 0,
+      thaiPct: ev.thaiPct || 0,
+      status: ev.status || 'tbd',
+      lastImport: ev.lastImport || null
+    };
+  });
+  return data;
+}
+
+function applyEventsData(data){
+  if(!data) return;
+  EVENTS.forEach(ev=>{
+    const d=data[ev.id];
+    if(!d) return;
+    if(d.reg!==undefined) ev.reg=d.reg;
+    if(Array.isArray(d.regWeekly)) ev.regWeekly=d.regWeekly;
+    if(Array.isArray(d.regWeeks)) ev.regWeeks=d.regWeeks;
+    if(typeof d.forecast==='number') ev.forecast=d.forecast;
+    if(typeof d.showUp==='number') ev.showUp=d.showUp;
+    if(typeof d.vipPct==='number') ev.vipPct=d.vipPct;
+    if(typeof d.qlPct==='number') ev.qlPct=d.qlPct;
+    if(typeof d.thaiPct==='number') ev.thaiPct=d.thaiPct;
+    if(d.status) ev.status=d.status;
+    if(d.lastImport!==undefined) ev.lastImport=d.lastImport;
+  });
+}
+
+function saveSharedStateQuiet(){
+  try{ localStorage.setItem('lome_events', JSON.stringify(getEventsPayload())); }catch(e){}
+  scheduleCloudSave();
+}
+
+function loadEventsFromLocal(){
+  try{
+    const raw=localStorage.getItem('lome_events');
+    if(raw) applyEventsData(JSON.parse(raw));
+  }catch(e){ console.error('loadEventsFromLocal:', e); }
+}
+
 function saveInventoryQuiet(){
   const data=getInventoryPayload();
   try{localStorage.setItem('lome_inventory',JSON.stringify(data));}catch(e){}
@@ -1988,6 +2069,7 @@ function applyImport(){
   closeModal();
   buildSidebar();updateTopbar();
   renderOverview();renderForecast();renderInventory();renderOrderCalc();
+  saveSharedStateQuiet();
   showToast(`${ev.code} updated · ${importData.total} registered · ~${ev.showUp} show-up forecast`);
 }
 
@@ -2081,8 +2163,9 @@ function startLomeApp(){
   if(appStarted) return;
   appStarted = true;
   loadInventory();
-  initFirebaseLiveSync();
+  loadEventsFromLocal();
   loadSyncConfig();
+  initFirebaseLiveSync();
   computeForecasts();
   recalcAllocations();
   buildSidebar();updateTopbar();
@@ -2344,6 +2427,7 @@ function loadSyncConfig(){
 function saveSyncConfig(){
   try{ localStorage.setItem('lome_sync', JSON.stringify(syncConfig)); }
   catch(e){}
+  scheduleCloudSave();
 }
 
 function openSyncModal(){
@@ -2482,6 +2566,7 @@ async function doSync(ev, url, showInModal){
     syncConfig[ev.id].lastSync = new Date().toLocaleString();
     syncConfig[ev.id].lastCount = parsed.total;
     saveSyncConfig();
+    saveSharedStateQuiet();
 
     computeForecasts(); recalcAllocations();
     buildSidebar(); updateTopbar();
