@@ -680,23 +680,31 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <div>
           <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;">Event code</div>
-          <input id="ne-code" class="cell-input" style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);" placeholder="e.g. MMI-2609-MNL"/>
+          <input id="ne-code" style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);" placeholder="e.g. MMI-2609-MNL" oninput="this.value=this.value.toUpperCase()"/>
         </div>
         <div>
           <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;">City</div>
-          <input id="ne-city" class="cell-input" style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);" placeholder="e.g. Manila"/>
+          <input id="ne-city" style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);" placeholder="e.g. Manila"/>
         </div>
         <div>
-          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;">Event date</div>
-          <input id="ne-date" class="cell-input" style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);" placeholder="e.g. 18–20 Sep 2026"/>
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;">Event start date</div>
+          <input id="ne-startdate" type="date" style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);" onchange="calcDaysAway()"/>
         </div>
         <div>
-          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;">Days away</div>
-          <input id="ne-days" class="cell-input" type="number" style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);" placeholder="e.g. 116"/>
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;">Event end date</div>
+          <input id="ne-enddate" type="date" style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);"/>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;">Days away <span style="color:var(--accent)">(auto-calculated)</span></div>
+          <input id="ne-days" type="number" readonly style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);" placeholder="Auto from start date"/>
         </div>
         <div>
           <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;">Target pax</div>
-          <input id="ne-target" class="cell-input" type="number" style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);" placeholder="e.g. 250"/>
+          <input id="ne-target" type="number" style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);" placeholder="e.g. 250" value="250"/>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;">Show-up rate %</div>
+          <input id="ne-showup" type="number" style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);" placeholder="65" value="65"/>
         </div>
         <div>
           <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;">Thai language split?</div>
@@ -1625,6 +1633,9 @@ function renderOrderCalc(){
         <span style="font-family:var(--mono);font-size:14px;font-weight:700;color:${r.stock>0?'var(--accent)':'var(--text3)'}">${r.stock||'—'}</span>
       </td>
       <td style="text-align:center">
+        <span style="font-family:var(--mono);font-size:14px;font-weight:700;color:${r.coverFromStock>0?'var(--green)':'var(--text3)'}">${r.coverFromStock||'—'}</span>
+      </td>
+      <td style="text-align:center">
         ${r.onOrder>0
           ? `<span style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--amber)">${r.onOrder}</span>
              <div style="font-size:9px;color:var(--amber)">🚚 pending</div>`
@@ -2161,12 +2172,22 @@ function preventScrollJump(el){
 // DYNAMIC EVENT MANAGEMENT
 // ═══════════════════════════════════════════════════════════════
 function openAddEvent(){
-  // Clear fields
-  ['ne-code','ne-city','ne-date','ne-days','ne-target'].forEach(id=>{
-    document.getElementById(id).value='';
+  ['ne-code','ne-city','ne-startdate','ne-enddate','ne-days'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
   });
+  document.getElementById('ne-target').value='250';
+  document.getElementById('ne-showup').value='65';
   document.getElementById('ne-thai').value='0';
   document.getElementById('add-event-modal').classList.add('show');
+}
+
+function calcDaysAway(){
+  const startDate = document.getElementById('ne-startdate').value;
+  if(!startDate) return;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const start = new Date(startDate);
+  const diff = Math.round((start - today) / 86400000);
+  document.getElementById('ne-days').value = Math.max(0, diff);
 }
 
 function closeAddEvent(){
@@ -2174,14 +2195,18 @@ function closeAddEvent(){
 }
 
 function confirmAddEvent(){
-  const code  = document.getElementById('ne-code').value.trim().toUpperCase();
-  const city  = document.getElementById('ne-city').value.trim();
-  const date  = document.getElementById('ne-date').value.trim();
-  const days  = parseInt(document.getElementById('ne-days').value)||0;
-  const target= parseInt(document.getElementById('ne-target').value)||250;
-  const thai  = parseInt(document.getElementById('ne-thai').value)||0;
+  const code      = document.getElementById('ne-code').value.trim().toUpperCase();
+  const city      = document.getElementById('ne-city').value.trim();
+  const startDate = document.getElementById('ne-startdate').value;
+  const endDate   = document.getElementById('ne-enddate').value;
+  const days      = parseInt(document.getElementById('ne-days').value)||0;
+  const target    = parseInt(document.getElementById('ne-target').value)||250;
+  const thai      = parseInt(document.getElementById('ne-thai').value)||0;
+  // Format display date from start/end
+  const fmtDate = (d) => { if(!d) return ''; const dt=new Date(d); return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); };
+  const date = startDate ? (endDate ? `${fmtDate(startDate)} – ${fmtDate(endDate)}` : fmtDate(startDate)) : '';
 
-  if(!code||!city||!date){
+  if(!code||!city||!startDate){
     showToast('Please fill in event code, city and date');
     return;
   }
@@ -2224,11 +2249,16 @@ function confirmAddEvent(){
   buildSidebar();
   updateTopbar();
   renderOverview();
-
-  // Update all event selectors in the app
   updateEventSelectors();
+  showToast(`✓ ${code} · ${city} added`);
 
-  showToast(`✓ ${code} · ${city} added — set up live sync to import registrations`);
+  // Ask user if they want to import registration now
+  setTimeout(()=>{
+    if(confirm(`${code} added! Import its registration list now?`)){
+      importTarget = newEv;
+      openModal('reg');
+    }
+  }, 300);
 }
 
 function updateEventSelectors(){
