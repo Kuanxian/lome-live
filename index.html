@@ -356,7 +356,10 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
   <div class="nav-item" onclick="showPage('packing',this)"><span class="nav-icon">✓</span>Packing Plan</div>
   <div class="nav-item" onclick="showPage('stationery',this)"><span class="nav-icon">✎</span>Stationery</div>
   <div class="nav-item" onclick="showPage('ai',this)"><span class="nav-icon">✦</span>Emergency Vendors</div>
-  <div class="nav-section" style="margin-top:4px;">2026 Events</div>
+  <div class="nav-section" style="margin-top:4px;display:flex;align-items:center;justify-content:space-between;padding-right:10px;">
+  <span>Events</span>
+  <button onclick="openAddEvent()" style="font-size:10px;padding:2px 8px;border-radius:12px;border:1px solid rgba(79,142,247,0.3);background:var(--accent-bg);color:var(--accent);cursor:pointer;">+ Add</button>
+</div>
   <div class="sidebar-events" id="sidebar-events"></div>
   <div class="sidebar-foot">LOME v2.0 · Success Resources</div>
 </aside>
@@ -661,6 +664,58 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
 
       </div>
 </main>
+</div>
+
+<!-- ADD EVENT MODAL -->
+<div class="overlay" id="add-event-modal">
+  <div class="modal" style="width:520px;">
+    <div class="modal-hd">
+      <div>
+        <div class="modal-title">+ Add New Event</div>
+        <div class="modal-sub">Add a new MMI event and optionally import its registration list</div>
+      </div>
+      <button class="modal-x" onclick="closeAddEvent()">✕</button>
+    </div>
+    <div class="modal-bd" style="display:flex;flex-direction:column;gap:12px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div>
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;">Event code</div>
+          <input id="ne-code" class="cell-input" style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);" placeholder="e.g. MMI-2609-MNL"/>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;">City</div>
+          <input id="ne-city" class="cell-input" style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);" placeholder="e.g. Manila"/>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;">Event date</div>
+          <input id="ne-date" class="cell-input" style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);" placeholder="e.g. 18–20 Sep 2026"/>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;">Days away</div>
+          <input id="ne-days" class="cell-input" type="number" style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);" placeholder="e.g. 116"/>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;">Target pax</div>
+          <input id="ne-target" class="cell-input" type="number" style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);" placeholder="e.g. 250"/>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;">Thai language split?</div>
+          <select id="ne-thai" style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);">
+            <option value="0">No (English only)</option>
+            <option value="60">Yes — 60% Thai / 40% English</option>
+            <option value="50">Yes — 50/50 split</option>
+          </select>
+        </div>
+      </div>
+      <div style="background:var(--bg2);border-radius:var(--radius);padding:10px 12px;font-size:11px;color:var(--text3);">
+        💡 After adding the event, go to 🔄 Live sync to connect its registration Google Sheet.
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="closeAddEvent()">Cancel</button>
+      <button class="btn primary" onclick="confirmAddEvent()">+ Add event</button>
+    </div>
+  </div>
 </div>
 
 <!-- IMPORT MODAL -->
@@ -1022,7 +1077,7 @@ const ITEMS=[
   {code:'M3', item:'Registration Wristband – VIP (Red)',spec:'25mm Synthetic',cat:'material',paxBased:true,ratio:'vip',lang:'EN',vendor:'Kadpo Industry (PG)'},
   {code:'M4', item:'Registration Wristband – Standard (Green)',spec:'25mm Synthetic',cat:'material',paxBased:true,ratio:'std',lang:'EN',vendor:'Kadpo Industry (PG)'},
   {code:'M5', item:'$500 Currency Certificate',spec:'8"×3.5" · 160gsm Artcard',cat:'material',paxBased:true,ratio:2.0,perPaxNote:'2 per pax',lang:'EN',vendor:'Kadpo Industry (PG)'},
-  {code:'M6', item:'Lucky Draw Tickets',spec:'16cm×6cm · 128gsm · ~9 draws/day × 3 days',cat:'material',paxBased:true,ratio:27,perPaxNote:'9/day × 3 days = 27 per pax',lang:'EN',vendor:'Kadpo Industry (PG)'},
+  {code:'M6', item:'Lucky Draw Tickets',spec:'16cm×6cm · 128gsm · 3 breaks/day × 3 days = 9 per pax',cat:'material',paxBased:true,ratio:9,perPaxNote:'3 breaks/day × 3 days = 9 per pax',lang:'EN',vendor:'Kadpo Industry (PG)'},
   {code:'M7', item:'Attitudes of Wealth – Winning the Mind Game',spec:'A4 · 80gsm Golden Rod · B/W',cat:'material',paxBased:true,ratio:1.0,lang:'SPLIT',vendor:'Kadpo Industry (PG)'},
   {code:'M8', item:'Attitudes of Wealth – Winning the Money Game',spec:'A4 · 80gsm Green · B/W',cat:'material',paxBased:true,ratio:1.0,lang:'SPLIT',vendor:'Kadpo Industry (PG)'},
   {code:'M9', item:'Rubber Wristband – I HAVE A MILLIONAIRE MIND',spec:'Rubber',cat:'material',paxBased:true,ratio:1.0,lang:'EN',vendor:'Kadpo Industry (PG)'},
@@ -2102,6 +2157,97 @@ function preventScrollJump(el){
   requestAnimationFrame(()=>{ wrap.scrollTop = top; });
 }
 
+// ═══════════════════════════════════════════════════════════════
+// DYNAMIC EVENT MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+function openAddEvent(){
+  // Clear fields
+  ['ne-code','ne-city','ne-date','ne-days','ne-target'].forEach(id=>{
+    document.getElementById(id).value='';
+  });
+  document.getElementById('ne-thai').value='0';
+  document.getElementById('add-event-modal').classList.add('show');
+}
+
+function closeAddEvent(){
+  document.getElementById('add-event-modal').classList.remove('show');
+}
+
+function confirmAddEvent(){
+  const code  = document.getElementById('ne-code').value.trim().toUpperCase();
+  const city  = document.getElementById('ne-city').value.trim();
+  const date  = document.getElementById('ne-date').value.trim();
+  const days  = parseInt(document.getElementById('ne-days').value)||0;
+  const target= parseInt(document.getElementById('ne-target').value)||250;
+  const thai  = parseInt(document.getElementById('ne-thai').value)||0;
+
+  if(!code||!city||!date){
+    showToast('Please fill in event code, city and date');
+    return;
+  }
+
+  // Generate a unique ID from code
+  const id = code.replace(/[^A-Z0-9]/g,'').slice(0,8) || ('EV'+Date.now());
+
+  // Check for duplicates
+  if(EVENTS.find(e=>e.id===id||e.code===code)){
+    showToast('An event with this code already exists');
+    return;
+  }
+
+  const newEv = {
+    id, code, city, date, days,
+    target, status:'new',
+    reg:null, regWeekly:[], regWeeks:[],
+    forecast:0, showUp:0,
+    vipPct:38, qlPct:5,
+    lastImport:null,
+    isBKK: thai>0,
+    thaiPct: thai,
+  };
+
+  EVENTS.push(newEv);
+
+  // Add inventory state for new event
+  ITEMS.forEach(it=>{
+    if(inventory[it.code]&&inventory[it.code].alloc){
+      inventory[it.code].alloc[id]=0;
+    }
+  });
+
+  // Set as current event
+  curEv=newEv;
+
+  closeAddEvent();
+  computeForecasts();
+  recalcAllocations();
+  buildSidebar();
+  updateTopbar();
+  renderOverview();
+
+  // Update all event selectors in the app
+  updateEventSelectors();
+
+  showToast(`✓ ${code} · ${city} added — set up live sync to import registrations`);
+}
+
+function updateEventSelectors(){
+  // Update all <select> dropdowns that list events
+  const selectors=['pack-ev-sel','venue-event','mat-event','m-event','v-event'];
+  selectors.forEach(id=>{
+    const sel=document.getElementById(id);
+    if(!sel) return;
+    const current=sel.value;
+    sel.innerHTML=EVENTS.map(ev=>
+      `<option value="${ev.id}" ${ev.id===current?'selected':''}>${ev.code} · ${ev.city}</option>`
+    ).join('');
+  });
+  // Update sync modal tabs
+  if(typeof buildSyncTabs==='function') buildSyncTabs();
+  // Update import modal tabs
+  if(typeof buildModalTabs==='function') buildModalTabs();
+}
+
 function showToast(msg){
   let t=document.getElementById('toast');
   if(!t){t=document.createElement('div');t.id='toast';t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg1);border:1px solid var(--border2);border-radius:8px;padding:10px 18px;font-size:12px;color:var(--text);z-index:200;box-shadow:0 4px 20px rgba(0,0,0,0.4);transition:opacity .3s;pointer-events:none;';document.body.appendChild(t);}
@@ -2121,10 +2267,11 @@ function showPage(id,navEl){
     const map={overview:'Over',forecast:'Fore',inventory:'Inven',packing:'Pack',stationery:'Stat',ai:'Emergency'};
     if(n.textContent.trim().startsWith(map[id]))n.classList.add('active');
   });
-  document.getElementById('topbar-title').textContent={overview:'Overview',forecast:'Forecast & Registration',inventory:'Warehouse & Stock',packing:'Packing Plan',stationery:'Stationery',ai:'Emergency Vendors'}[id];
+  document.getElementById('topbar-title').textContent={overview:'Overview',forecast:'Forecast & Registration',inventory:'Warehouse & Stock',packing:'Packing Plan',stationery:'Stationery',ai:'AI Assistant'}[id]||'';
   if(id==='forecast')renderForecast();
   if(id==='inventory')renderInventory();
   if(id==='packing')renderPackingPlan();
+  if(id==='ai'){if(typeof buildMatChips==='function')buildMatChips();}
   if(id==='stationery')renderStat();
   if(id==='ai')buildMatChips();
 }
@@ -2175,6 +2322,7 @@ function startLomeApp(){
   updateSyncBtn();
   runAutoSyncs(); // auto-sync any connected events on open
   document.getElementById('import-modal').addEventListener('click',e=>{if(e.target===document.getElementById('import-modal'))closeModal();});
+  document.getElementById('add-event-modal').addEventListener('click',e=>{if(e.target===document.getElementById('add-event-modal'))closeAddEvent();});
   // drop zone drag handlers inline
   const dz=document.getElementById('drop-zone');
   dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
