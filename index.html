@@ -308,6 +308,13 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
 .vendor-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
 .vendor-message{font-size:11px;line-height:1.6;color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:9px 10px;margin-top:9px;}
 .priority-box{background:rgba(79,142,247,0.06);border:1px solid rgba(79,142,247,0.18);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:12px;font-size:12px;line-height:1.7;color:var(--text2);}
+.pnl-input{width:100%;padding:7px 9px;font-size:13px;font-weight:600;font-family:var(--mono);background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);outline:none;transition:border .12s;}
+.pnl-input:focus{border-color:var(--accent);}
+.scenario-card{background:var(--bg1);border:2px solid var(--border);border-radius:var(--radius-lg);padding:16px;position:relative;overflow:hidden;}
+.scenario-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;}
+.sc-diedie::before{background:var(--red);}
+.sc-good::before{background:var(--amber);}
+.sc-outrageous::before{background:var(--green);}
 ::-webkit-scrollbar{width:4px;height:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
@@ -356,7 +363,8 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
   <div class="nav-item" onclick="showPage('inventory',this)"><span class="nav-icon">📦</span>Stock Management<span class="nav-badge nb-red" id="inv-badge">—</span></div>
   <div class="nav-item" onclick="showPage('packing',this)"><span class="nav-icon">✓</span>Packing Plan</div>
   <div class="nav-item" onclick="showPage('stationery',this)"><span class="nav-icon">✎</span>Stationery</div>
-  <div class="nav-item" onclick="showPage('ai',this)"><span class="nav-icon">✦</span>Emergency Vendors</div>
+  <div class="nav-item" onclick="showPage('ai',this)"><span class="nav-icon">✦</span>AI Assistant</div>
+  <div class="nav-item" onclick="showPage('pnl',this)"><span class="nav-icon">📊</span>Event P&amp;L</div>
   <div class="nav-section" style="margin-top:4px;display:flex;align-items:center;justify-content:space-between;padding-right:10px;"><span>Events</span><button onclick="openAddEvent()" style="font-size:10px;padding:2px 9px;border-radius:20px;border:1px solid var(--accent);background:var(--accent-bg);color:var(--accent);cursor:pointer;font-weight:500;">+ Add</button></div>
   <div class="sidebar-events" id="sidebar-events"></div>
   <div class="sidebar-foot">LOME v2.0 · Success Resources</div>
@@ -702,6 +710,168 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
       </div>
     </div>
 
+
+
+    <!-- P&L FORECAST PAGE -->
+    <div class="page" id="page-pnl">
+      <div style="flex:1;overflow-y:auto;padding:20px;scrollbar-width:thin;scrollbar-color:var(--border3,#ccc) transparent;" id="pnl-scroll">
+
+        <!-- HEADER -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+          <div>
+            <div style="font-size:18px;font-weight:700;letter-spacing:-0.3px;">Event P&L Simulator</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px;">Based on real data from MMI2601KL · MMI2602SG · MMI2603BKK · MMI2605KL</div>
+          </div>
+          <button class="btn primary" onclick="calcPnL()">▶ Run simulation</button>
+        </div>
+
+        <!-- EVENT SELECTOR + CURRENCY -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
+          <div>
+            <div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;">Planning for event</div>
+            <select id="pnl-event" style="width:100%;padding:8px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);" onchange="pnlEventChanged()"></select>
+          </div>
+          <div>
+            <div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;">Currency</div>
+            <select id="pnl-currency" style="width:100%;padding:8px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);" onchange="pnlEventChanged()">
+              <option value="USD">USD — US Dollar</option>
+              <option value="MYR">MYR — Malaysian Ringgit</option>
+              <option value="SGD">SGD — Singapore Dollar</option>
+              <option value="THB">THB — Thai Baht</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;">Expected show-up pax</div>
+            <input type="number" id="pnl-pax" value="200" style="width:100%;padding:8px 10px;font-size:13px;font-weight:600;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--mono);"/>
+          </div>
+        </div>
+
+        <!-- COST INPUTS -->
+        <div style="background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;">Production Costs</div><div style="font-size:10px;color:var(--text3);background:var(--bg2);padding:2px 9px;border-radius:10px;">Enter all amounts in USD · Total converts to your selected currency</div></div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Venue (Hall + Storage)</div>
+              <input type="number" id="pc-venue" value="25000" class="pnl-input"/>
+              <div style="font-size:9px;color:var(--text3);margin-top:2px;">Avg: $25K–$47K</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">AV Vendor</div>
+              <input type="number" id="pc-av" value="8000" class="pnl-input"/>
+              <div style="font-size:9px;color:var(--text3);margin-top:2px;">Avg: $6.5K–$32K</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Lead Trainer Fee</div>
+              <input type="number" id="pc-lt-fee" value="9500" class="pnl-input"/>
+              <div style="font-size:9px;color:var(--text3);margin-top:2px;">Avg: $9K–$15.8K</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Assisting Trainer Fee</div>
+              <input type="number" id="pc-at-fee" value="1500" class="pnl-input"/>
+              <div style="font-size:9px;color:var(--text3);margin-top:2px;">Avg: $1.5K–$4K</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">LT Flights</div>
+              <input type="number" id="pc-lt-flight" value="6000" class="pnl-input"/>
+              <div style="font-size:9px;color:var(--text3);margin-top:2px;">Avg: $5K–$8.2K</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">AT Flights</div>
+              <input type="number" id="pc-at-flight" value="400" class="pnl-input"/>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">F&B (Staff + Q&A + QL)</div>
+              <input type="number" id="pc-fb" value="4650" class="pnl-input"/>
+              <div style="font-size:9px;color:var(--text3);margin-top:2px;">Avg: $4.6K from KL data</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Printing & Materials</div>
+              <input type="number" id="pc-print" value="1700" class="pnl-input"/>
+              <div style="font-size:9px;color:var(--text3);margin-top:2px;">~$8.50 per pax</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Accommodation & Petty Cash</div>
+              <input type="number" id="pc-accom" value="7000" class="pnl-input"/>
+              <div style="font-size:9px;color:var(--text3);margin-top:2px;">Avg: $3.8K–$10.7K</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Translation (if needed)</div>
+              <input type="number" id="pc-translation" value="0" class="pnl-input"/>
+              <div style="font-size:9px;color:var(--text3);margin-top:2px;">BKK: $3.8K</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Other / Contingency</div>
+              <input type="number" id="pc-other" value="3000" class="pnl-input"/>
+            </div>
+            <div style="background:var(--bg2);border-radius:var(--radius);padding:10px;display:flex;flex-direction:column;justify-content:center;">
+              <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;">Total production</div>
+              <div id="pc-total" style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--red);">$0 USD</div>
+              <div id="pc-total-usd" style="font-size:11px;font-weight:500;font-family:var(--mono);color:var(--text3);">$0</div>
+              <div style="font-size:9px;color:var(--text3);margin-top:2px;">Excl. marketing</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- REVENUE INPUTS -->
+        <div style="background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;"><div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;">Revenue Assumptions</div><div style="font-size:10px;color:var(--text3);background:var(--bg2);padding:3px 9px;border-radius:12px;">Prices converted to USD · SGD 29 std · SGD 156 VIP · USD 5,997 QL</div></div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">VIP ticket price (USD) <span style="color:var(--accent)">SGD 156 sale</span></div>
+              <input type="number" id="rv-vip-price" value="115" class="pnl-input"/>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Standard ticket price (USD) <span style="color:var(--accent)">SGD 29 sale</span></div>
+              <input type="number" id="rv-std-price" value="22" class="pnl-input"/>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">VIP % of pax</div>
+              <input type="number" id="rv-vip-pct" value="38" class="pnl-input"/>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Quantum Leap price (USD)</div>
+              <input type="number" id="rv-ql-price" value="5997" class="pnl-input"/>
+              <div style="font-size:9px;color:var(--text3);margin-top:2px;">NWA+GBI+TTT+EWC bundle</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">QL closing % (of pax)</div>
+              <input type="number" id="rv-ql-pct" value="5" class="pnl-input"/>
+              <div style="font-size:9px;color:var(--text3);margin-top:2px;">Avg from historical: 5%</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Ala carte avg price (USD)</div>
+              <input type="number" id="rv-alacarte-price" value="2000" class="pnl-input"/>
+              <div style="font-size:9px;color:var(--text3);margin-top:2px;">Per individual program</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Ala carte closing % (of pax)</div>
+              <input type="number" id="rv-alacarte-pct" value="8" class="pnl-input"/>
+            </div>
+            <div style="background:var(--bg2);border-radius:var(--radius);padding:10px;display:flex;flex-direction:column;justify-content:center;">
+              <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;">Est. total revenue</div>
+              <div id="rv-total" style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--green);">$0 USD</div>
+              <div id="rv-total-usd" style="font-size:11px;font-weight:500;font-family:var(--mono);color:var(--text3);">$0</div>
+              <div style="font-size:9px;color:var(--text3);margin-top:2px;">L1 + L2 combined</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SIMULATION RESULTS -->
+        <div id="pnl-results" style="display:none;">
+
+          <!-- 3 SCENARIO CARDS -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;" id="pnl-scenarios"></div>
+
+          <!-- DETAILED BREAKDOWN -->
+          <div style="background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:14px;" id="pnl-breakdown"></div>
+
+          <!-- REALITY CHECK from historical data -->
+          <div style="background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;" id="pnl-history"></div>
+
+        </div>
+
+      </div>
+    </div>
   </div>
 </main>
 </div>
@@ -2320,7 +2490,8 @@ function showPage(id,navEl){
     const map={overview:'Over',forecast:'Fore',inventory:'Inven',packing:'Pack',stationery:'Stat',ai:'Emergency'};
     if(n.textContent.trim().startsWith(map[id]))n.classList.add('active');
   });
-  document.getElementById('topbar-title').textContent={overview:'Overview',forecast:'Forecast & Registration',inventory:'Warehouse & Stock',packing:'Packing Plan',stationery:'Stationery',ai:'Emergency Vendors'}[id];
+  const __titles={overview:'Overview',forecast:'Forecast & Registration',inventory:'Stock Management',packing:'Packing Plan',stationery:'Stationery',ai:'AI Assistant',pnl:'Event P&L Forecast'};
+  document.getElementById('topbar-title').textContent=__titles[id]||id;
   if(id==='forecast')renderForecast();
   if(id==='inventory')renderInventory();
   if(id==='packing')renderPackingPlan();
@@ -2428,6 +2599,14 @@ const EMERGENCY_VENDORS = [
     notes: "Call/WhatsApp first with quantity, deadline, artwork status and pickup/delivery needs."
   }
 ];
+
+function populatePnlSelectors(){
+  const sel=document.getElementById('pnl-event');
+  if(!sel) return;
+  const cur=sel.value;
+  sel.innerHTML=EVENTS.map(ev=>`<option value="${ev.id}" ${ev.id===cur?'selected':''}>${ev.code} · ${ev.city}</option>`).join('');
+  if(!cur && EVENTS.length) pnlEventChanged();
+}
 
 function populateDelegateDropdowns(){
   const dEvent=document.getElementById('d-event');
@@ -2688,6 +2867,289 @@ function copyDraft(id){
   navigator.clipboard.writeText(el.textContent).then(()=>showToast('✓ Copied!')).catch(()=>{
     const ta=document.createElement('textarea');ta.value=el.textContent;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('✓ Copied!');
   });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EVENT P&L SIMULATOR
+// ═══════════════════════════════════════════════════════════════
+
+// Historical data from actual events for benchmarking
+const HISTORICAL_PNL = [
+  { event:'MMI2601KL', city:'Kuala Lumpur', pax_est:200,
+    prod_cost:72846, marketing:33958, total_cost:106805,
+    l1_rev:12009, l2_rev:182501, total_rev:194510, pnl:87705, pnl_pct:45.1 },
+  { event:'MMI2602SG', city:'Singapore', pax_est:150,
+    prod_cost:132886, marketing:0, total_cost:132886,
+    l1_rev:34764, l2_rev:0, total_rev:34764, pnl:34764, pnl_pct:100 },
+  { event:'MMI2603BKK', city:'Bangkok', pax_est:180,
+    prod_cost:67314, marketing:39879, total_cost:107193,
+    l1_rev:34764, l2_rev:100993, total_rev:135758, pnl:28565, pnl_pct:21.0 },
+  { event:'MMI2605KL', city:'Kuala Lumpur', pax_est:200,
+    prod_cost:66728, marketing:31909, total_cost:98637,
+    l1_rev:10491, l2_rev:76961, total_rev:87452, pnl:-11186, pnl_pct:-11.3 },
+];
+
+const FX_RATES = { USD:1, MYR:4.44, SGD:1.35, THB:35.5 };
+
+function pnlEventChanged(){
+  const evId = document.getElementById('pnl-event')?.value;
+  const ev = EVENTS.find(e=>e.id===evId);
+  if(!ev) return;
+  const pax = ev.showUp || ev.pax || 200;
+  const paxEl = document.getElementById('pnl-pax');
+  if(paxEl) paxEl.value = pax;
+  const vipEl = document.getElementById('rv-vip-pct');
+  if(vipEl && ev.vipPct) vipEl.value = ev.vipPct;
+  // Update cost defaults in selected currency
+  const {rate} = getCurrency();
+  const defaults = {
+    'pc-venue': Math.round(25000*rate), 'pc-av': Math.round(8000*rate),
+    'pc-lt-fee': Math.round(9500*rate), 'pc-at-fee': Math.round(1500*rate),
+    'pc-lt-flight': Math.round(6000*rate), 'pc-at-flight': Math.round(400*rate),
+    'pc-fb': Math.round(4650*rate), 'pc-print': Math.round(pax*8.5*rate),
+    'pc-accom': Math.round(7000*rate), 'pc-translation': 0, 'pc-other': Math.round(3000*rate),
+  };
+  Object.entries(defaults).forEach(([id,val])=>{
+    const el=document.getElementById(id); if(el) el.value=val;
+  });
+  // Update revenue price defaults in selected currency
+  const rvDefaults = {
+    'rv-vip-price': Math.round(115*rate), 'rv-std-price': Math.round(22*rate),
+    'rv-ql-price': Math.round(5997*rate), 'rv-alacarte-price': Math.round(2000*rate),
+  };
+  Object.entries(rvDefaults).forEach(([id,val])=>{
+    const el=document.getElementById(id); if(el) el.value=val;
+  });
+  updatePnlTotals();
+}
+
+function getCurrency(){
+  const cur = document.getElementById('pnl-currency')?.value || 'USD';
+  return { code: cur, rate: FX_RATES[cur] || 1 };
+}
+
+function fmtCur(usd){
+  const {code, rate} = getCurrency();
+  const val = usd * rate;
+  const sym = {USD:'$', MYR:'RM', SGD:'S$', THB:'฿'}[code] || '$';
+  return sym + val.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
+}
+
+function getPcTotalRaw(){
+  // Raw sum in whatever currency the user is entering
+  const ids = ['pc-venue','pc-av','pc-lt-fee','pc-at-fee','pc-lt-flight',
+               'pc-at-flight','pc-fb','pc-print','pc-accom','pc-translation','pc-other'];
+  return ids.reduce((s,id)=>s+(parseFloat(document.getElementById(id)?.value)||0),0);
+}
+
+function getPcTotal(){
+  const ids = ['pc-venue','pc-av','pc-lt-fee','pc-at-fee','pc-lt-flight',
+               'pc-at-flight','pc-fb','pc-print','pc-accom','pc-translation','pc-other'];
+  const totalInCurrency = ids.reduce((s,id)=>s+(parseFloat(document.getElementById(id)?.value)||0),0);
+  // Convert from selected currency back to USD for all calculations
+  const {rate} = getCurrency();
+  return totalInCurrency / rate;
+}
+
+function getRvTotal(){
+  const pax = parseInt(document.getElementById('pnl-pax')?.value)||200;
+  const vipPct = (parseFloat(document.getElementById('rv-vip-pct')?.value)||38)/100;
+  const vipPrice = parseFloat(document.getElementById('rv-vip-price')?.value)||115;
+  const stdPrice = parseFloat(document.getElementById('rv-std-price')?.value)||22;
+  const qlPct = (parseFloat(document.getElementById('rv-ql-pct')?.value)||5)/100;
+  const qlPrice = parseFloat(document.getElementById('rv-ql-price')?.value)||5997;
+  const alaCartePct = (parseFloat(document.getElementById('rv-alacarte-pct')?.value)||8)/100;
+  const alaCarte = parseFloat(document.getElementById('rv-alacarte-price')?.value)||2000;
+  // Convert all prices from selected currency to USD for calculations
+  const {rate} = getCurrency();
+  const vipPriceUSD = vipPrice / rate;
+  const stdPriceUSD = stdPrice / rate;
+  const qlPriceUSD = qlPrice / rate;
+  const alaCarteUSD = alaCarte / rate;
+  const vip = Math.round(pax * vipPct);
+  const std = pax - vip;
+  const l1 = (vip * vipPriceUSD) + (std * stdPriceUSD);
+  const ql = Math.round(pax * qlPct);
+  const alaCarteCount = Math.round(pax * alaCartePct);
+  const l2 = (ql * qlPriceUSD) + (alaCarteCount * alaCarteUSD);
+  return { l1, l2, total: l1+l2, vip, std, ql, alaCarteCount,
+           vipPriceCur:vipPrice, stdPriceCur:stdPrice, qlPriceCur:qlPrice, alaCarteCur:alaCarte };
+}
+
+function updatePnlTotals(){
+  const prod = getPcTotal();
+  const rev = getRvTotal();
+  const pcEl = document.getElementById('pc-total');
+  const rvEl = document.getElementById('rv-total');
+  const pcUsd = document.getElementById('pc-total-usd');
+  const rvUsd = document.getElementById('rv-total-usd');
+  // Big number = selected currency (what user entered), small = USD reference
+  const {code, rate} = getCurrency();
+  const prodCur = getPcTotalRaw(); // raw sum in selected currency
+  const revCur = rev.total * rate; // USD total converted back to display currency
+  const sym = {USD:'$',MYR:'RM',SGD:'S$',THB:'฿'}[code]||'$';
+  if(pcEl) pcEl.textContent = sym+prodCur.toLocaleString('en-US',{maximumFractionDigits:0})+' '+code;
+  if(rvEl) rvEl.textContent = sym+(rev.total*rate).toLocaleString('en-US',{maximumFractionDigits:0})+' '+code;
+  if(pcUsd) pcUsd.textContent = code!=='USD' ? '$'+prod.toLocaleString('en-US',{maximumFractionDigits:0})+' USD' : '';
+  if(rvUsd) rvUsd.textContent = code!=='USD' ? '$'+rev.total.toLocaleString('en-US',{maximumFractionDigits:0})+' USD' : '';
+}
+
+// Auto-update totals on any input change
+document.addEventListener('input', function(e){
+  if(e.target.classList.contains('pnl-input') || e.target.id === 'pnl-pax') updatePnlTotals();
+});
+
+function calcPnL(){
+  const pax = parseInt(document.getElementById('pnl-pax')?.value)||200;
+  const prod = getPcTotal();
+  const rev = getRvTotal();
+  const {l1, l2, total, vip, std, ql, alaCarteCount} = rev;
+  const net = total - prod;
+  const netPct = prod > 0 ? (net/prod*100) : 0;
+
+  // ── THREE SCENARIOS ──────────────────────────────────────────
+  // DIE DIE: Revenue just covers production cost
+  // GOOD TO HAVE: Revenue covers production + contributes 30% to next level backend costs
+  // OUTRAGEOUS: Revenue covers production + full L2 profit
+
+  // From historical: backend (L2) avg cost per pax to run ~$280-400 USD
+  const backendCostPerPax = 350; // conservative estimate
+  const backendTotal = pax * backendCostPerPax;
+
+  // Die Die: need at least prod cost in revenue (L1+L2 breakeven on production)
+  const dieDieTarget = prod;
+  const dieDieL1Need = Math.max(0, dieDieTarget - l2); // what L1 must cover if L2 not there
+  const dieDieOk = total >= dieDieTarget;
+
+  // Good to Have: cover production + 30% of backend costs
+  const goodTarget = prod + (backendTotal * 0.3);
+  const goodOk = total >= goodTarget;
+
+  // Outrageous: cover production + full backend + 20% profit margin
+  const outrageousTarget = prod + backendTotal + (prod * 0.2);
+  const outrageousOk = total >= outrageousTarget;
+
+  // Render scenarios
+  const scenarios = [
+    {
+      label: '😰 Die Die to Have',
+      cls: 'sc-diedie',
+      color: 'var(--red)',
+      target: dieDieTarget,
+      desc: 'Revenue covers frontend production only. Technically still losing if you factor in backend.',
+      reality: 'If most events land here, the team will burn out within a year.',
+      ok: dieDieOk,
+      gap: dieDieTarget - total,
+    },
+    {
+      label: '🙂 Good to Have',
+      cls: 'sc-good',
+      color: 'var(--amber)',
+      target: goodTarget,
+      desc: 'Revenue covers production + 30% contribution toward next-level (L2) event costs.',
+      reality: 'Sustainable short-term. Business is building toward self-funding.',
+      ok: goodOk,
+      gap: goodTarget - total,
+    },
+    {
+      label: '🚀 Outrageous',
+      cls: 'sc-outrageous',
+      color: 'var(--green)',
+      target: outrageousTarget,
+      desc: 'Revenue covers production + full backend event cost + 20% real profit for the organiser.',
+      reality: 'This is where the business is truly growing. Rare but what to aim for.',
+      ok: outrageousOk,
+      gap: outrageousTarget - total,
+    },
+  ];
+
+  document.getElementById('pnl-scenarios').innerHTML = scenarios.map(s => `
+    <div class="scenario-card ${s.cls}">
+      <div style="font-size:13px;font-weight:700;margin-bottom:6px;">${s.label}</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:10px;line-height:1.6;">${s.desc}</div>
+      <div style="font-size:10px;color:var(--text3);margin-bottom:8px;">Target revenue</div>
+      <div style="font-size:22px;font-weight:700;font-family:var(--mono);color:${s.color};margin-bottom:4px;">${fmtCur(s.target)}</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+        ${s.ok
+          ? `<span style="font-size:11px;font-weight:600;color:var(--green);background:var(--green-bg);padding:3px 8px;border-radius:12px;">✓ You hit this</span>`
+          : `<span style="font-size:11px;font-weight:600;color:var(--red);background:var(--red-bg);padding:3px 8px;border-radius:12px;">✕ Gap: ${fmtCur(s.gap)}</span>`
+        }
+      </div>
+      <div style="font-size:10px;color:var(--text3);font-style:italic;line-height:1.5;border-top:1px solid var(--border);padding-top:8px;">${s.reality}</div>
+    </div>`).join('');
+
+  // Detailed breakdown
+  document.getElementById('pnl-breakdown').innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Simulation breakdown — ${pax} show-up pax</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div>
+        <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:8px;">Revenue</div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          ${row('VIP tickets', `${vip} pax × ${fmtCur(parseFloat(document.getElementById('rv-vip-price').value))}`, fmtCur(vip * parseFloat(document.getElementById('rv-vip-price').value)), 'var(--accent)')}
+          ${row('Standard tickets', `${std} pax × ${fmtCur(parseFloat(document.getElementById('rv-std-price').value))}`, fmtCur(std * parseFloat(document.getElementById('rv-std-price').value)), 'var(--accent)')}
+          ${row('L1 Total', '', fmtCur(l1), 'var(--accent)', true)}
+          ${row('QL sales', `${ql} buyers × ${fmtCur(parseFloat(document.getElementById('rv-ql-price').value))}`, fmtCur(ql * parseFloat(document.getElementById('rv-ql-price').value)), 'var(--purple)')}
+          ${row('Ala carte sales', `${alaCarteCount} buyers × ${fmtCur(parseFloat(document.getElementById('rv-alacarte-price').value))}`, fmtCur(alaCarteCount * parseFloat(document.getElementById('rv-alacarte-price').value)), 'var(--purple)')}
+          ${row('L2 Total', '', fmtCur(l2), 'var(--purple)', true)}
+          ${row('TOTAL REVENUE', '', fmtCur(total), net>=0?'var(--green)':'var(--red)', true)}
+        </div>
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;margin-bottom:8px;">Production Cost</div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          ${['pc-venue:Venue','pc-av:AV Vendor','pc-lt-fee:LT Fee','pc-at-fee:AT Fee',
+             'pc-lt-flight:LT Flight','pc-at-flight:AT Flight','pc-fb:F&B',
+             'pc-print:Printing','pc-accom:Accom+Petty Cash','pc-translation:Translation','pc-other:Other']
+            .map(s=>{ const [id,label]=s.split(':'); const v=parseFloat(document.getElementById(id)?.value)||0; return v>0?row(label,'',fmtCur(v),'var(--text2)'):'' }).join('')}
+          ${row('TOTAL COST', '(excl. marketing)', fmtCur(prod), 'var(--red)', true)}
+        </div>
+        <div style="margin-top:14px;padding-top:12px;border-top:2px solid var(--border);">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:13px;font-weight:700;">Net P&L</span>
+            <span style="font-size:20px;font-weight:700;font-family:var(--mono);color:${net>=0?'var(--green)':'var(--red)'};">${fmtCur(net)}</span>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:3px;">
+            ${net>=0?'▲ '+netPct.toFixed(1)+'% return on production cost':'▼ '+Math.abs(netPct).toFixed(1)+'% loss on production cost'}
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  // Historical reality check
+  const avgHistProd = HISTORICAL_PNL.reduce((s,e)=>s+e.prod_cost,0)/HISTORICAL_PNL.length;
+  const avgHistL2 = HISTORICAL_PNL.filter(e=>e.l2_rev>0).reduce((s,e)=>s+e.l2_rev,0)/HISTORICAL_PNL.filter(e=>e.l2_rev>0).length;
+  const profitableCount = HISTORICAL_PNL.filter(e=>e.pnl>0).length;
+
+  document.getElementById('pnl-history').innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Reality check — from your 4 past events</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">
+      ${HISTORICAL_PNL.map(e=>`
+        <div style="background:var(--bg2);border-radius:var(--radius);padding:10px;border-left:3px solid ${e.pnl>0?'var(--green)':'var(--red)'};">
+          <div style="font-size:9px;font-family:var(--mono);color:var(--accent);margin-bottom:4px;">${e.event}</div>
+          <div style="font-size:11px;font-weight:600;">${e.city}</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px;">Prod: $${(e.prod_cost/1000).toFixed(0)}K</div>
+          <div style="font-size:10px;color:var(--text3);">L2: $${(e.l2_rev/1000).toFixed(0)}K</div>
+          <div style="font-size:13px;font-weight:700;font-family:var(--mono);color:${e.pnl>0?'var(--green)':'var(--red)'};margin-top:4px;">${e.pnl>0?'+':''}$${(e.pnl/1000).toFixed(1)}K</div>
+        </div>`).join('')}
+    </div>
+    <div style="font-size:11px;color:var(--text2);line-height:1.8;background:var(--bg2);border-radius:var(--radius);padding:10px 12px;">
+      <b>${profitableCount}/4 events were profitable.</b> 
+      Avg production cost: <b>$${(avgHistProd/1000).toFixed(0)}K</b>. 
+      L2 revenue (when it happened): avg <b>$${(avgHistL2/1000).toFixed(0)}K</b> — this is where the real money is. 
+      The event that lost money (MMI2605KL, -$11K) had good L2 but production was not recovered by L1 alone. 
+      Your simulation ${net>=0?'shows positive P&L — <b style="color:var(--green)">proceed</b>':'shows a loss — <b style="color:var(--red)">review costs or increase L2 targets before committing</b>'}.
+    </div>`;
+
+  document.getElementById('pnl-results').style.display='block';
+  document.getElementById('pnl-results').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function row(label, sub, val, color, bold){
+  return `<div style="display:flex;justify-content:space-between;align-items:baseline;padding:3px 0;${bold?'border-top:1px solid var(--border);margin-top:3px;padding-top:6px;':''}">
+    <span style="font-size:${bold?'11.5':'11'}px;${bold?'font-weight:600;':''}color:var(--text2);">${label}${sub?`<span style="font-size:9px;color:var(--text3);margin-left:4px;">${sub}</span>`:''}
+    </span>
+    <span style="font-size:${bold?'13':'12'}px;font-weight:${bold?700:500};font-family:var(--mono);color:${color};">${val}</span>
+  </div>`;
 }
 
 function fmtAI(text){
