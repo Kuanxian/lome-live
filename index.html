@@ -2497,6 +2497,7 @@ function showPage(id,navEl){
   if(id==='packing')renderPackingPlan();
   if(id==='stationery')renderStat();
   if(id==='ai')buildMatChips();
+  if(id==='pnl'){populatePnlSelectors();updatePnlTotals();}
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2603,9 +2604,9 @@ const EMERGENCY_VENDORS = [
 function populatePnlSelectors(){
   const sel=document.getElementById('pnl-event');
   if(!sel) return;
-  const cur=sel.value;
-  sel.innerHTML=EVENTS.map(ev=>`<option value="${ev.id}" ${ev.id===cur?'selected':''}>${ev.code} · ${ev.city}</option>`).join('');
-  if(!cur && EVENTS.length) pnlEventChanged();
+  sel.innerHTML=EVENTS.map(ev=>`<option value="${ev.id}">${ev.code} · ${ev.city}</option>`).join('');
+  // Always trigger pnlEventChanged to fill defaults for the first event
+  if(EVENTS.length) pnlEventChanged();
 }
 
 function populateDelegateDropdowns(){
@@ -2894,38 +2895,52 @@ const FX_RATES = { USD:1, MYR:4.44, SGD:1.35, THB:35.5 };
 function pnlEventChanged(){
   const evId = document.getElementById('pnl-event')?.value;
   const ev = EVENTS.find(e=>e.id===evId);
-  if(!ev) return;
-  const pax = ev.showUp || ev.pax || 200;
-  const paxEl = document.getElementById('pnl-pax');
-  if(paxEl) paxEl.value = pax;
-  const vipEl = document.getElementById('rv-vip-pct');
-  if(vipEl && ev.vipPct) vipEl.value = ev.vipPct;
-  // Update cost defaults in selected currency
-  const {rate} = getCurrency();
-  const defaults = {
-    'pc-venue': Math.round(25000*rate), 'pc-av': Math.round(8000*rate),
-    'pc-lt-fee': Math.round(9500*rate), 'pc-at-fee': Math.round(1500*rate),
-    'pc-lt-flight': Math.round(6000*rate), 'pc-at-flight': Math.round(400*rate),
-    'pc-fb': Math.round(4650*rate), 'pc-print': Math.round(pax*8.5*rate),
-    'pc-accom': Math.round(7000*rate), 'pc-translation': 0, 'pc-other': Math.round(3000*rate),
+  // Update pax and VIP% from event if available
+  if(ev){
+    const pax = ev.showUp || ev.pax || 200;
+    const paxEl = document.getElementById('pnl-pax');
+    if(paxEl) paxEl.value = pax;
+    const vipEl = document.getElementById('rv-vip-pct');
+    if(vipEl && ev.vipPct) vipEl.value = ev.vipPct;
+  }
+  // Convert defaults to selected currency
+  const cur = document.getElementById('pnl-currency')?.value || 'USD';
+  const rate = FX_RATES[cur] || 1;
+  const pax2 = parseInt(document.getElementById('pnl-pax')?.value) || 200;
+  // Cost defaults in selected currency
+  const costDefaults = {
+    'pc-venue':       Math.round(25000 * rate),
+    'pc-av':          Math.round(8000  * rate),
+    'pc-lt-fee':      Math.round(9500  * rate),
+    'pc-at-fee':      Math.round(1500  * rate),
+    'pc-lt-flight':   Math.round(6000  * rate),
+    'pc-at-flight':   Math.round(400   * rate),
+    'pc-fb':          Math.round(4650  * rate),
+    'pc-print':       Math.round(pax2 * 8.5 * rate),
+    'pc-accom':       Math.round(7000  * rate),
+    'pc-translation': 0,
+    'pc-other':       Math.round(3000  * rate),
   };
-  Object.entries(defaults).forEach(([id,val])=>{
+  Object.entries(costDefaults).forEach(([id,val])=>{
     const el=document.getElementById(id); if(el) el.value=val;
   });
-  // Update revenue price defaults in selected currency
-  const rvDefaults = {
-    'rv-vip-price': Math.round(115*rate), 'rv-std-price': Math.round(22*rate),
-    'rv-ql-price': Math.round(5997*rate), 'rv-alacarte-price': Math.round(2000*rate),
+  // Revenue price defaults in selected currency
+  const revDefaults = {
+    'rv-vip-price':      Math.round(115  * rate),
+    'rv-std-price':      Math.round(22   * rate),
+    'rv-ql-price':       Math.round(5997 * rate),
+    'rv-alacarte-price': Math.round(2000 * rate),
   };
-  Object.entries(rvDefaults).forEach(([id,val])=>{
+  Object.entries(revDefaults).forEach(([id,val])=>{
     const el=document.getElementById(id); if(el) el.value=val;
   });
   updatePnlTotals();
 }
 
 function getCurrency(){
-  const cur = document.getElementById('pnl-currency')?.value || 'USD';
-  return { code: cur, rate: FX_RATES[cur] || 1 };
+  const cur = (document.getElementById('pnl-currency')?.value) || 'USD';
+  const rate = FX_RATES[cur] || 1;
+  return { code: cur, rate };
 }
 
 function fmtCur(usd){
