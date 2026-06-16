@@ -3119,7 +3119,7 @@ function getRvTotal(){
   const l2Disp = document.getElementById('rv-l2-display');
   if(l2Disp) l2Disp.textContent = sym+l2.toLocaleString('en-US',{maximumFractionDigits:0});
 
-  return { l1, l2, total, vip, std, ql, ac, vipPrice, stdPrice, qlPrice, acPrice, sym, rate, code };
+  return { l1, l2, total, vip, std, ql, ac, vipPrice, stdPrice, qlPrice, acPrice, qlPriceUSD, acPriceUSD, sym, rate, code };
 }
 
 function updatePnlTotals(){
@@ -3152,7 +3152,7 @@ document.addEventListener('input', function(e){
 function calcPnL(){
   const prod  = getPcTotal();
   const rev   = getRvTotal();
-  const {l1, l2, total, vip, std, ql, ac, vipPrice, stdPrice, qlPrice, acPrice, sym, code} = rev;
+  const {l1, l2, total, vip, std, ql, ac, vipPrice, stdPrice, qlPrice, acPrice, qlPriceUSD, acPriceUSD, sym, code} = rev;
   const net   = total - prod;
   const netPct = prod > 0 ? (net/prod*100) : 0;
 
