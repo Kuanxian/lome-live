@@ -733,10 +733,10 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
           </div>
           <div>
             <div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;">Currency</div>
-            <select id="pnl-currency" style="width:100%;padding:8px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);" onchange="pnlEventChanged()">
+            <select id="pnl-currency" style="width:100%;padding:8px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);" onchange="pnlCurrencyChanged()">
+              <option value="SGD" selected>SGD — Singapore Dollar</option>
               <option value="USD">USD — US Dollar</option>
               <option value="MYR">MYR — Malaysian Ringgit</option>
-              <option value="SGD">SGD — Singapore Dollar</option>
               <option value="THB">THB — Thai Baht</option>
             </select>
           </div>
@@ -2654,7 +2654,9 @@ function populatePnlSelectors(){
   const sel=document.getElementById('pnl-event');
   if(!sel) return;
   sel.innerHTML=EVENTS.map(ev=>`<option value="${ev.id}">${ev.code} · ${ev.city}</option>`).join('');
-  // Always trigger pnlEventChanged to fill defaults for the first event
+  // Init rate tracker to current selected currency
+  const cur = document.getElementById('pnl-currency')?.value || 'SGD';
+  pnlLastRate = FX_RATES[cur] || 1;
   if(EVENTS.length) pnlEventChanged();
 }
 
@@ -2942,14 +2944,15 @@ const HISTORICAL_PNL = [
 const FX_RATES = { USD:1, MYR:4.44, SGD:1.35, THB:35.5 };
 
 function pnlEventChanged(){
+  // Only runs when event selector changes
+  // Pre-fills pax + VIP/STD counts from event registration data
+  // Does NOT touch cost inputs (user may have already edited them)
   const evId = document.getElementById('pnl-event')?.value;
   const ev = EVENTS.find(e=>e.id===evId);
-  // Update pax and VIP% from event if available
   if(ev){
     const pax = ev.showUp || ev.pax || 200;
     const paxEl = document.getElementById('pnl-pax');
     if(paxEl) paxEl.value = pax;
-    // Pre-fill VIP and Standard counts from registration data
     const showUpRate = 0.65;
     const vipCount = ev.reg ? Math.round(ev.reg * (ev.vipPct||38) / 100 * showUpRate) : Math.round(pax * 0.38);
     const stdCount = ev.reg ? Math.round(ev.reg * (1-(ev.vipPct||38)/100) * showUpRate) : Math.round(pax * 0.62);
@@ -2959,38 +2962,77 @@ function pnlEventChanged(){
     if(stdCntEl) stdCntEl.value = stdCount;
     syncVipPct();
   }
-  // Convert defaults to selected currency
-  const cur = document.getElementById('pnl-currency')?.value || 'USD';
-  const rate = FX_RATES[cur] || 1;
-  const pax2 = parseInt(document.getElementById('pnl-pax')?.value) || 200;
-  // Cost defaults in selected currency
-  const costDefaults = {
-    'pc-venue':       Math.round(25000 * rate),
-    'pc-av':          Math.round(8000  * rate),
-    'pc-lt-fee':      Math.round(9500  * rate),
-    'pc-at-fee':      Math.round(1500  * rate),
-    'pc-lt-flight':   Math.round(6000  * rate),
-    'pc-at-flight':   Math.round(400   * rate),
-    'pc-fb':          Math.round(4650  * rate),
-    'pc-print':       Math.round(pax2 * 8.5 * rate),
-    'pc-accom':       Math.round(7000  * rate),
-    'pc-translation': 0,
-    'pc-other':       Math.round(3000  * rate),
-  };
-  Object.entries(costDefaults).forEach(([id,val])=>{
-    const el=document.getElementById(id); if(el) el.value=val;
-  });
-  // Revenue price defaults in selected currency
-  const revDefaults = {
-    'rv-vip-price':      Math.round(115  * rate),
-    'rv-std-price':      Math.round(22   * rate),
-    'rv-ql-price':       Math.round(5997 * rate),
-    'rv-alacarte-price': Math.round(4247 * rate),
-  };
-  Object.entries(revDefaults).forEach(([id,val])=>{
-    const el=document.getElementById(id); if(el) el.value=val;
-  });
+  // Only fill cost defaults if all fields are still at zero (first load)
+  const allZero = ['pc-venue','pc-av','pc-lt-fee'].every(id=>
+    (parseFloat(document.getElementById(id)?.value)||0) === 0
+  );
+  if(allZero) pnlFillDefaults();
   updatePnlTotals();
+}
+
+function pnlCurrencyChanged(){
+  // Converts existing field values from old currency to new currency
+  const newCur = document.getElementById('pnl-currency')?.value || 'SGD';
+  const newRate = FX_RATES[newCur] || 1;
+  const oldRate = pnlLastRate || 1;
+  const ratio = newRate / oldRate;
+  pnlLastRate = newRate;
+
+  // Convert all cost inputs
+  const costIds = ['pc-venue','pc-av','pc-lt-fee','pc-at-fee','pc-lt-flight',
+                   'pc-at-flight','pc-fb','pc-print','pc-accom','pc-translation','pc-other'];
+  costIds.forEach(id=>{
+    const el = document.getElementById(id);
+    if(el && parseFloat(el.value)){
+      el.value = Math.round(parseFloat(el.value) * ratio);
+    }
+  });
+
+  // Convert ticket prices (VIP + Standard — these are in local currency)
+  ['rv-vip-price','rv-std-price'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el && parseFloat(el.value)){
+      el.value = Math.round(parseFloat(el.value) * ratio);
+    }
+  });
+  // QL and ala carte prices stay in USD — don't convert
+
+  updatePnlTotals();
+}
+
+// Track last FX rate for conversion
+let pnlLastRate = 1;
+
+function pnlFillDefaults(){
+  // Fill in typical cost defaults in selected currency — only called on first load
+  const cur = document.getElementById('pnl-currency')?.value || 'SGD';
+  const rate = FX_RATES[cur] || 1;
+  pnlLastRate = rate;
+  const pax2 = parseInt(document.getElementById('pnl-pax')?.value)||200;
+  const defs = {
+    'pc-venue':       Math.round(25000*rate),
+    'pc-av':          Math.round(8000*rate),
+    'pc-lt-fee':      Math.round(9500*rate),
+    'pc-at-fee':      Math.round(1500*rate),
+    'pc-lt-flight':   Math.round(6000*rate),
+    'pc-at-flight':   Math.round(400*rate),
+    'pc-fb':          Math.round(4650*rate),
+    'pc-print':       Math.round(pax2*8.5*rate),
+    'pc-accom':       Math.round(7000*rate),
+    'pc-translation': 0,
+    'pc-other':       Math.round(3000*rate),
+  };
+  Object.entries(defs).forEach(([id,val])=>{
+    const el=document.getElementById(id); if(el) el.value=val;
+  });
+  // Revenue price defaults
+  const rvDefs = {
+    'rv-vip-price':      Math.round(115*rate),
+    'rv-std-price':      Math.round(22*rate),
+  };
+  Object.entries(rvDefs).forEach(([id,val])=>{
+    const el=document.getElementById(id); if(el) el.value=val;
+  });
 }
 
 function getCurrency(){
@@ -3025,12 +3067,9 @@ function getPcTotalRaw(){
 }
 
 function getPcTotal(){
-  const ids = ['pc-venue','pc-av','pc-lt-fee','pc-at-fee','pc-lt-flight',
-               'pc-at-flight','pc-fb','pc-print','pc-accom','pc-translation','pc-other'];
-  const totalInCurrency = ids.reduce((s,id)=>s+(parseFloat(document.getElementById(id)?.value)||0),0);
-  // Convert from selected currency back to USD for all calculations
+  // Inputs are in selected currency — divide by rate to get USD for calculations
   const {rate} = getCurrency();
-  return totalInCurrency / rate;
+  return getPcTotalRaw() / rate;
 }
 
 function getRvTotal(){
