@@ -748,7 +748,7 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
 
         <!-- COST INPUTS -->
         <div style="background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:14px;">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;">Production Costs</div><div style="font-size:10px;color:var(--text3);background:var(--bg2);padding:2px 9px;border-radius:10px;">Enter all amounts in USD · Total converts to your selected currency</div></div>
+          <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Production Costs <span id="prod-currency-label" style="font-size:10px;font-weight:400;color:var(--text3);"></span></div>
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
             <div>
               <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Venue (Hall + Storage)</div>
@@ -858,13 +858,13 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                   <div>
                     <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">QL price (USD — fixed globally)</div>
-                    <input type="number" id="rv-ql-price" class="pnl-input" value="6997"/>
-                    <div style="font-size:9px;color:var(--text3);margin-top:2px;">Primary: $6,997 · Family: $5,997</div>
+                    <input type="number" id="rv-ql-price" class="pnl-input" value="5997"/>
+                    <div style="font-size:9px;color:var(--text3);margin-top:2px;">$5,997 standard · $6,997 primary</div>
                   </div>
                   <div>
-                    <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">How many attendees buy QL?</div>
-                    <input type="number" id="rv-ql-pct" class="pnl-input" value="10"/>
-                    <div style="font-size:9px;color:var(--text3);margin-top:2px;">10% = your confirmed conversion rate</div>
+                    <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">QL buyers (auto: 10% of show-up)</div>
+                    <div id="ql-buyers-display" style="padding:7px 9px;font-size:13px;font-weight:700;font-family:var(--mono);background:var(--bg3);border-radius:var(--radius);border:1px solid var(--border);color:var(--accent);">—</div>
+                    <div style="font-size:9px;color:var(--text3);margin-top:2px;">10% of (VIP + Std attendees)</div>
                   </div>
                 </div>
                 <div id="ql-calc-preview" style="font-size:11px;color:var(--text2);margin-top:8px;padding-top:8px;border-top:1px solid var(--border);"></div>
@@ -874,13 +874,13 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                   <div>
                     <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Avg ala carte price (USD)</div>
-                    <input type="number" id="rv-alacarte-price" class="pnl-input" value="4247"/>
+                    <input type="number" id="rv-alacarte-price" class="pnl-input" value="4247" oninput="updatePnlTotals()"/>
                     <div style="font-size:9px;color:var(--text3);margin-top:2px;">NWA $2,997 · GBI $3,497 · TTT $4,497 · EWTC $5,997 · avg $4,247</div>
                   </div>
                   <div>
-                    <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">How many attendees buy ala carte?</div>
-                    <input type="number" id="rv-alacarte-pct" class="pnl-input" value="3"/>
-                    <div style="font-size:9px;color:var(--text3);margin-top:2px;">3% = conservative estimate · update when you have real data</div>
+                    <div style="font-size:10px;color:var(--text3);margin-bottom:4px;">Ala carte buyers (auto: 3% of show-up)</div>
+                    <div id="ac-buyers-display" style="padding:7px 9px;font-size:13px;font-weight:700;font-family:var(--mono);background:var(--bg3);border-radius:var(--radius);border:1px solid var(--border);color:var(--purple);">—</div>
+                    <div style="font-size:9px;color:var(--text3);margin-top:2px;">3% of (VIP + Std attendees) · update % when you have real data</div>
                   </div>
                 </div>
                 <div id="ac-calc-preview" style="font-size:11px;color:var(--text2);margin-top:8px;padding-top:8px;border-top:1px solid var(--border);"></div>
@@ -3073,28 +3073,30 @@ function getPcTotal(){
 }
 
 function getRvTotal(){
-  const pax         = parseInt(document.getElementById('pnl-pax')?.value)||200;
-  // Use direct counts if available, fallback to pax * pct
-  const vipCount    = parseInt(document.getElementById('rv-vip-count')?.value)||0;
-  const stdCount    = parseInt(document.getElementById('rv-std-count')?.value)||0;
-  const vip         = vipCount || Math.round(pax * 0.38);
-  const std         = stdCount || (pax - vip);
+  const vip         = parseInt(document.getElementById('rv-vip-count')?.value)||0;
+  const std         = parseInt(document.getElementById('rv-std-count')?.value)||0;
+  const totalPax    = vip + std;
   const vipPrice    = parseFloat(document.getElementById('rv-vip-price')?.value)||156;
   const stdPrice    = parseFloat(document.getElementById('rv-std-price')?.value)||29;
-  const qlPct       = (parseFloat(document.getElementById('rv-ql-pct')?.value)||10)/100;
-  const qlPriceUSD  = parseFloat(document.getElementById('rv-ql-price')?.value)||6997;
-  const acPct       = (parseFloat(document.getElementById('rv-alacarte-pct')?.value)||3)/100;
+  const qlPriceUSD  = parseFloat(document.getElementById('rv-ql-price')?.value)||5997;
   const acPriceUSD  = parseFloat(document.getElementById('rv-alacarte-price')?.value)||4247;
+
+  // QL and AC are auto-calculated — 10% and 3% of show-up pax
+  const ql = Math.round(totalPax * 0.10);
+  const ac = Math.round(totalPax * 0.03);
+
+  // Update auto-calculated buyer displays
+  const qlDisp = document.getElementById('ql-buyers-display');
+  if(qlDisp) qlDisp.textContent = ql + ' buyers';
+  const acDisp = document.getElementById('ac-buyers-display');
+  if(acDisp) acDisp.textContent = ac + ' buyers';
+
   const {rate, code} = getCurrency();
   const sym = {USD:'$',MYR:'RM',SGD:'S$',THB:'฿'}[code]||'$';
 
-  // Ticket prices in selected currency → convert to USD
+  // Ticket prices entered in selected currency → divide by rate for USD
   const vipPriceUSD = vipPrice / rate;
   const stdPriceUSD = stdPrice / rate;
-
-  const totalAttendees = vip + std;
-  const ql = Math.round(totalAttendees * qlPct);
-  const ac = Math.round(totalAttendees * acPct);
 
   const l1USD    = (vip * vipPriceUSD) + (std * stdPriceUSD);
   const l2USD    = (ql  * qlPriceUSD)  + (ac  * acPriceUSD);
@@ -3103,15 +3105,15 @@ function getRvTotal(){
   // Live previews
   const l1El = document.getElementById('l1-calc-preview');
   if(l1El) l1El.innerHTML =
-    `${vip} VIP × ${sym}${vipPrice} + ${std} Std × ${sym}${stdPrice} = <b style="color:var(--accent)">${sym}${(l1USD*rate).toLocaleString('en-US',{maximumFractionDigits:0})}</b> (total ${vip+std} attendees)`;
+    `${vip} VIP × ${sym}${vipPrice.toLocaleString()} + ${std} Std × ${sym}${stdPrice.toLocaleString()} = <b style="color:var(--accent)">${sym}${(l1USD*rate).toLocaleString('en-US',{maximumFractionDigits:0})}</b> (${totalPax} total attendees)`;
 
   const qlEl = document.getElementById('ql-calc-preview');
   if(qlEl) qlEl.innerHTML =
-    `${ql} buyers (${Math.round(qlPct*100)}% of ${totalAttendees} pax) × $${qlPriceUSD.toLocaleString()} = <b style="color:var(--purple)">$${(ql*qlPriceUSD).toLocaleString('en-US',{maximumFractionDigits:0})} USD</b>`;
+    `${ql} buyers (10% of ${totalPax}) × $${qlPriceUSD.toLocaleString()} = <b style="color:var(--purple)">$${(ql*qlPriceUSD).toLocaleString('en-US',{maximumFractionDigits:0})} USD</b>`;
 
   const acEl = document.getElementById('ac-calc-preview');
   if(acEl) acEl.innerHTML =
-    `${ac} buyers (${Math.round(acPct*100)}% of ${totalAttendees} pax) × $${acPriceUSD.toLocaleString()} = <b style="color:var(--purple)">$${(ac*acPriceUSD).toLocaleString('en-US',{maximumFractionDigits:0})} USD</b>`;
+    `${ac} buyers (3% of ${totalPax}) × $${acPriceUSD.toLocaleString()} = <b style="color:var(--purple)">$${(ac*acPriceUSD).toLocaleString('en-US',{maximumFractionDigits:0})} USD</b>`;
 
   // Summary boxes
   const l1Disp = document.getElementById('rv-l1-display');
@@ -3128,12 +3130,18 @@ function updatePnlTotals(){
   const rev  = getRvTotal();
   const {code, rate} = getCurrency();
   const sym  = {USD:'$',MYR:'RM',SGD:'S$',THB:'฿'}[code]||'$';
-  // Production total
+
+  // Update currency label on production section
+  const lbl = document.getElementById('prod-currency-label');
+  if(lbl) lbl.textContent = '— enter in ' + code;
+
+  // Production total: big = selected currency, small = USD reference
   const pcEl    = document.getElementById('pc-total');
   const pcUsdEl = document.getElementById('pc-total-usd');
-  const rawProd = getPcTotalRaw(); // in selected currency
+  const rawProd = getPcTotalRaw();
   if(pcEl)    pcEl.textContent    = sym+rawProd.toLocaleString('en-US',{maximumFractionDigits:0})+' '+code;
   if(pcUsdEl) pcUsdEl.textContent = code!=='USD' ? '$'+prod.toLocaleString('en-US',{maximumFractionDigits:0})+' USD' : '';
+
   // Revenue total
   const rvEl    = document.getElementById('rv-total');
   const rvUsdEl = document.getElementById('rv-total-usd');
