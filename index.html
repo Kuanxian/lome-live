@@ -3913,9 +3913,7 @@ function convertAppsScriptResponse(json, ev){
 
 // ── PARSE CSV FROM GOOGLE SHEETS (fallback) ───────────────────────────────
 function parseRegistrationCSV(csv, ev){
-  const lines = csv.split(/
-?
-/).filter(l => l.trim());
+  const lines = csv.split(/\r?\n/).filter(l => l.trim());
   if(!lines.length) return {total:0,vip:0,std:0,ql:0,vipPct:38,thaiPct:0,weeklyArr:[],weeklyLabels:[]};
 
   // Find header row flexibly.
