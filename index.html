@@ -527,6 +527,9 @@ html[data-theme="dark"] tbody tr:hover td{background:rgba(255,255,255,0.03);}
 .icon-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
 .auth-logo{width:52px;height:52px;border-radius:15px;background:var(--accent-grad);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 30px rgba(47,107,255,.5);margin-bottom:16px;}
 .auth-logo svg{width:29px;height:29px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+
+.sub-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.sub-content.active{display:flex;}
 </style>
 </head>
 <body>
@@ -830,13 +833,13 @@ html[data-theme="dark"] tbody tr:hover td{background:rgba(255,255,255,0.03);}
             <button class="btn primary" onclick="runMaterialsSearch()" style="white-space:nowrap">✦ Match vendors</button>
           </div>
           <div class="mat-chips" id="mat-chips"></div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:var(--bg1);border-bottom:1px solid var(--border);flex-shrink:0;">
-            <span style="font-size:11px;font-weight:600;color:var(--text2);">📋 Saved vendors <span id="vendor-city-label" style="color:var(--text3);font-weight:400;"></span></span>
-            <button class="btn primary" onclick="openAddVendor()" style="font-size:11px;padding:4px 10px;">+ Add vendor</button>
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--bg1);border-bottom:1px solid var(--border);flex-shrink:0;">
+            <span style="font-size:11px;font-weight:600;color:var(--text2);white-space:nowrap;">📋 Vendors</span>
+            <input id="vendor-search" type="text" placeholder="Search vendors…" oninput="renderVendorList()" style="flex:1;padding:5px 9px;font-size:11px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);outline:none;"/>
+            <button class="btn primary" onclick="openAddVendor()" style="font-size:11px;padding:4px 10px;white-space:nowrap;">+ Add vendor</button>
           </div>
-          <div style="flex:1;overflow-y:auto;scrollbar-width:thin;">
-            <div id="vendor-list" style="border-bottom:2px solid var(--border);background:var(--bg1);"></div>
-            <div id="m-result" style="padding:14px;">
+          <div id="vendor-list" style="max-height:220px;overflow-y:auto;border-bottom:2px solid var(--border);background:var(--bg1);scrollbar-width:thin;flex-shrink:0;"></div>
+          <div class="ai-result" id="m-result">
             <div class="ai-empty">
               <div class="ai-empty-icon" style="color:var(--text3);display:flex"><svg class="ic" width="42" height="42" viewBox="0 0 24 24" style="stroke-width:1.4"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h2.3l2.3 12.5a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.6L21 7H5.5"/></svg></div>
               <div style="font-size:13px;font-weight:500">Malaysia Emergency Vendor Directory</div>
@@ -1544,6 +1547,13 @@ let importTarget=EVENTS[0];
 let importData=null;
 let curEv=EVENTS[0];
 
+
+(function(){
+  var D={SG:new Date('2026-07-10'),BKK:new Date('2026-07-24'),JB:new Date('2026-07-31'),KL:new Date('2026-10-30')};
+  var t=new Date();t.setHours(0,0,0,0);
+  EVENTS.forEach(function(ev){if(D[ev.id])ev.days=Math.max(0,Math.round((D[ev.id]-t)/86400000));});
+})();
+
 // ═══════════════════════════════════════════════════════════════
 // PAX CALCULATION
 // ═══════════════════════════════════════════════════════════════
@@ -2122,7 +2132,7 @@ function renderInventory(){
     </tr>`);
   });
 
-  document.getElementById('inv-tbody').innerHTML=rows.join('')||
+  document.getElementById('stock-admin-tbody').innerHTML=rows.join('')||
     `<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:28px">No items match.</td></tr>`;
 }
 
@@ -2508,27 +2518,7 @@ function togglePack(evId,code){
   renderPackingPlan();
 }
 
-function resetPack(){packChecked={};renderPackingPlan();}
 
-function exportPackingPlan(){
-  const evId=document.getElementById('pack-ev-sel').value;
-  const ev=EVENTS.find(e=>e.id===evId);
-  const rows=[['Code','Item','Pack Qty','Stock on Hand','Status','Notes']];
-  PACK_SECTIONS.forEach(sec=>{
-    rows.push([sec.sec,'','','','','']);
-    sec.items.forEach(it=>{
-      const matchItem=ITEMS.find(pi=>pi.code===it.code);
-      const stock=matchItem?inventory[matchItem.code].stock:'-';
-      const alloc=matchItem?getNeededForEvent(matchItem.code,evId):'-';
-      const ck=packChecked[evId+'_'+it.code]?'✓ Packed':'— Pending';
-      rows.push([it.code,it.name,alloc||it.qty,stock,ck,it.note||'']);
-    });
-  });
-  const ws=XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols']=[{wch:8},{wch:40},{wch:10},{wch:14},{wch:10},{wch:30}];
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,`Pack_${evId}`);
-  XLSX.writeFile(wb,`LOME_PackingPlan_${evId}_${new Date().toISOString().slice(0,10)}.xlsx`);
-}
 
 // ═══════════════════════════════════════════════════════════════
 // STATIONERY
@@ -3216,7 +3206,15 @@ function renderVendorList(){
     list.innerHTML = '<div style="padding:12px 16px;font-size:11px;color:var(--text3);">No saved vendors yet. Click + Add vendor to add one.</div>';
     return;
   }
-  list.innerHTML = customVendors.map(function(v){
+  var q = (document.getElementById('vendor-search')?.value||'').toLowerCase();
+  var vendors = q
+    ? customVendors.filter(function(v){ return (v.name+' '+v.type+' '+(v.notes||'')+' '+(v.city||'')).toLowerCase().indexOf(q)>=0; })
+    : customVendors;
+  if(!vendors.length){
+    list.innerHTML = '<div style="padding:12px 16px;font-size:11px;color:var(--text3);">No vendors match your search.</div>';
+    return;
+  }
+  list.innerHTML = vendors.map(function(v){
     var cityTag = v.city ? '<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:var(--bg2);color:var(--text3);margin-left:6px;">' + v.city + '</span>' : '';
     var waBtn = v.wa ? '<a href="https://wa.me/' + v.wa.replace(/[^0-9]/g,'') + '" target="_blank" class="btn" style="font-size:10px;padding:4px 9px;background:var(--green-bg);color:var(--green);">WhatsApp</a>' : '';
     var delBtn = '<button onclick="deleteVendor(' + v.id + ')" class="btn" style="font-size:10px;padding:4px 8px;color:var(--red);background:var(--red-bg);">Remove</button>';
@@ -4582,20 +4580,118 @@ function lomeStockActionAnswer(q, events){
 
 function runAskLome(){
   populateAskLomeEventSelect();
-  const q=(document.getElementById('ask-query')?.value || '').trim();
-  const out=document.getElementById('ask-result');
+  const q = (document.getElementById('ask-query')?.value || '').trim();
+  const out = document.getElementById('ask-result');
   if(!out) return;
-  if(!q){ out.innerHTML='<div class="ai-empty"><div class="ai-empty-icon">🧠</div><div>Ask a question first.</div></div>'; return; }
-  const events=lomeResolveEventsFromQuery(q);
-  const ql=q.toLowerCase();
-  let html='';
-  if(/work\s*book|workbook|green workbook|grey workbook/.test(ql)) html=lomeWorkbookAnswer(events);
-  if(!html) html=lomeMaterialQtyAnswer(q, events);
-  if(!html) html=lomeStockActionAnswer(q, events);
-  if(!html){
-    html=`<div class="ai-response"><b style="color:var(--text)">I can answer using internal LOME data.</b><br>Try asking things like:<br>• How many workbooks do I need for MMI2607JB and MMI2611KL?<br>• What should we order today for SG?<br>• What should be transferred from another warehouse?<br>• Can MMI2607JB run with current stock?</div>`;
+  if(!q){
+    out.innerHTML = '<div class="ai-empty"><div class="ai-empty-icon">🧠</div><div>Ask me anything about your events, stock, or P&L.</div></div>';
+    return;
   }
-  out.innerHTML=html;
+
+  out.innerHTML = '<div class="ai-loading">🧠 Thinking…<div class="ai-dots"><span></span><span></span><span></span></div></div>';
+
+  // Build full LOME data context
+  var evSummary = EVENTS.map(function(ev){
+    return ev.code + ' (' + ev.city + '): ' + (ev.reg||0) + ' registered, ~' + (ev.showUp||0) + ' show-up expected, ' + ev.days + ' days away, status=' + ev.status;
+  }).join('
+');
+
+  var stockSummary = ITEMS.slice(0,30).map(function(it){
+    var inv = inventory[it.code] || {};
+    return it.code + ' ' + it.item + ': stock=' + (inv.stock||0) + (inv.ordered ? ', ordered='+inv.ordered : '');
+  }).join('
+');
+
+  // P&L historical data
+  var pnlSummary = [
+    'MMI2601KL: prod cost $72,846 USD, L2 revenue $182,501 USD, P&L +$87,705 USD',
+    'MMI2602SG: prod cost $132,886 USD, L2 revenue $0, P&L +$34,764 USD',
+    'MMI2603BKK: prod cost $67,314 USD, L2 revenue $100,993 USD, P&L +$28,565 USD',
+    'MMI2605KL: prod cost $66,728 USD, L2 revenue $76,961 USD, P&L -$11,186 USD',
+  ].join('
+');
+
+  // Trainer QL closing rates
+  var trainerSummary = 'Mac Attram: 14.7% avg QL close | Arnon Barnes: 12.3% | Alan P. Hill: 10.2% | Robert Riopel: 9.7%';
+
+  // Country data
+  var countrySummary = 'Malaysia showup 67.7% | Singapore 75% | Thailand 80.5% | Philippines 78.5% | Belgium 64.2%';
+
+  var systemPrompt = 'You are LOME, the internal logistics and business intelligence AI for Success Resources, an international events company. You run Millionaire Mind Intensive (MMI) seminars globally.
+
+'
+    + 'KEY BUSINESS RULES:
+'
+    + '- QL (Quantum Leap) conversion rate: 10% of show-up pax
+'
+    + '- QL price: USD 5,997 (standard) / USD 6,997 (primary)
+'
+    + '- Ala carte avg price: USD 4,247 (NWA $2,997, GBI $3,497, TTT $4,497, EWTC $5,997)
+'
+    + '- Ala carte closing: ~3% of show-up pax (conservative)
+'
+    + '- Show-up rate: 65% historical average
+'
+    + '- Lucky Draw: 9 tickets per pax (3 breaks/day x 3 days)
+'
+    + '- $500 Currency Certificate: 2 per pax
+'
+    + '- Blended QL rate = 60% country avg + 40% trainer avg
+'
+    + '- Hidden backend cost = 40% of QL revenue
+'
+    + '- Die Die threshold: 20 QL sales | Good to Have: 33 QL | Outrageous: 56 QL
+
+'
+    + 'CURRENT EVENTS:
+' + evSummary + '
+
+'
+    + 'STOCK SNAPSHOT (top 30 items):
+' + stockSummary + '
+
+'
+    + 'HISTORICAL P&L:
+' + pnlSummary + '
+
+'
+    + 'TRAINER QL RATES:
+' + trainerSummary + '
+
+'
+    + 'COUNTRY SHOW-UP RATES:
+' + countrySummary + '
+
+'
+    + 'Answer questions directly with specific numbers. Show calculations when asked about profit/revenue/P&L. Be concise and practical.';
+
+  fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1000,
+      system: systemPrompt,
+      messages: [{role: 'user', content: q}]
+    })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    var text = (data.content && data.content[0] && data.content[0].text) ? data.content[0].text : 'No response received.';
+    out.innerHTML = '<div class="ai-response">' + text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/
+/g,'<br>') + '</div>';
+  })
+  .catch(function(err){
+    // Fallback to rule-based if API fails
+    var ql2 = q.toLowerCase();
+    var evts = lomeResolveEventsFromQuery(q);
+    var fallback = '';
+    if(/workbook/.test(ql2)) fallback = lomeWorkbookAnswer(evts);
+    if(!fallback) fallback = lomeMaterialQtyAnswer(q, evts);
+    if(!fallback) fallback = lomeStockActionAnswer(q, evts);
+    if(!fallback) fallback = '<div class="ai-response" style="color:var(--red)">AI unavailable: ' + err.message + '. Check your connection.</div>';
+    out.innerHTML = fallback;
+  });
 }
 
 // Populate Ask LOME event dropdown when entering the AI page, without disturbing existing navigation.
