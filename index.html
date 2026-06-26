@@ -4580,130 +4580,37 @@ function lomeStockActionAnswer(q, events){
 
 function lomeFormatAI(text){
   if(!text) return '';
-  var s = text
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;');
-  // Bold: **text**
-  s = s.replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');
-  // Newlines to <br>
-  s = s.split('
-').join('<br>');
+  var s = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  s = s.replace(/\*\*([^\*]+)\*\*/g,'<b>$1</b>');
+  s = s.split('\n').join('<br>');
   return s;
 }
 
 function runAskLome(){
   populateAskLomeEventSelect();
-  const q = (document.getElementById('ask-query')?.value || '').trim();
-  const out = document.getElementById('ask-result');
+  var q = (document.getElementById('ask-query')?.value || '').trim();
+  var out = document.getElementById('ask-result');
   if(!out) return;
-  if(!q){
-    out.innerHTML = '<div class="ai-empty"><div class="ai-empty-icon">🧠</div><div>Ask me anything about your events, stock, or P&L.</div></div>';
-    return;
-  }
-
+  if(!q){ out.innerHTML = '<div class="ai-empty"><div class="ai-empty-icon">🧠</div><div>Ask me anything about your events, stock, or P&L.</div></div>'; return; }
   out.innerHTML = '<div class="ai-loading">🧠 Thinking…<div class="ai-dots"><span></span><span></span><span></span></div></div>';
-
-  // Build full LOME data context
-  var evSummary = EVENTS.map(function(ev){
-    return ev.code + ' (' + ev.city + '): ' + (ev.reg||0) + ' registered, ~' + (ev.showUp||0) + ' show-up expected, ' + ev.days + ' days away, status=' + ev.status;
-  }).join('
-');
-
-  var stockSummary = ITEMS.slice(0,30).map(function(it){
-    var inv = inventory[it.code] || {};
-    return it.code + ' ' + it.item + ': stock=' + (inv.stock||0) + (inv.ordered ? ', ordered='+inv.ordered : '');
-  }).join('
-');
-
-  // P&L historical data
-  var pnlSummary = [
-    'MMI2601KL: prod cost $72,846 USD, L2 revenue $182,501 USD, P&L +$87,705 USD',
-    'MMI2602SG: prod cost $132,886 USD, L2 revenue $0, P&L +$34,764 USD',
-    'MMI2603BKK: prod cost $67,314 USD, L2 revenue $100,993 USD, P&L +$28,565 USD',
-    'MMI2605KL: prod cost $66,728 USD, L2 revenue $76,961 USD, P&L -$11,186 USD',
-  ].join('
-');
-
-  // Trainer QL closing rates
-  var trainerSummary = 'Mac Attram: 14.7% avg QL close | Arnon Barnes: 12.3% | Alan P. Hill: 10.2% | Robert Riopel: 9.7%';
-
-  // Country data
-  var countrySummary = 'Malaysia showup 67.7% | Singapore 75% | Thailand 80.5% | Philippines 78.5% | Belgium 64.2%';
-
-  var systemPrompt = 'You are LOME, the internal logistics and business intelligence AI for Success Resources, an international events company. You run Millionaire Mind Intensive (MMI) seminars globally.
-
-'
-    + 'KEY BUSINESS RULES:
-'
-    + '- QL (Quantum Leap) conversion rate: 10% of show-up pax
-'
-    + '- QL price: USD 5,997 (standard) / USD 6,997 (primary)
-'
-    + '- Ala carte avg price: USD 4,247 (NWA $2,997, GBI $3,497, TTT $4,497, EWTC $5,997)
-'
-    + '- Ala carte closing: ~3% of show-up pax (conservative)
-'
-    + '- Show-up rate: 65% historical average
-'
-    + '- Lucky Draw: 9 tickets per pax (3 breaks/day x 3 days)
-'
-    + '- $500 Currency Certificate: 2 per pax
-'
-    + '- Blended QL rate = 60% country avg + 40% trainer avg
-'
-    + '- Hidden backend cost = 40% of QL revenue
-'
-    + '- Die Die threshold: 20 QL sales | Good to Have: 33 QL | Outrageous: 56 QL
-
-'
-    + 'CURRENT EVENTS:
-' + evSummary + '
-
-'
-    + 'STOCK SNAPSHOT (top 30 items):
-' + stockSummary + '
-
-'
-    + 'HISTORICAL P&L:
-' + pnlSummary + '
-
-'
-    + 'TRAINER QL RATES:
-' + trainerSummary + '
-
-'
-    + 'COUNTRY SHOW-UP RATES:
-' + countrySummary + '
-
-'
-    + 'Answer questions directly with specific numbers. Show calculations when asked about profit/revenue/P&L. Be concise and practical.';
-
+  var evSummary = EVENTS.map(function(ev){ return ev.code + ' (' + ev.city + '): ' + (ev.reg||0) + ' registered, ~' + (ev.showUp||0) + ' show-up, ' + ev.days + ' days away'; }).join(', ');
+  var stockSummary = ITEMS.slice(0,20).map(function(it){ var inv=inventory[it.code]||{}; return it.code + ' ' + it.item + ': stock=' + (inv.stock||0); }).join(', ');
+  var systemPrompt = 'You are LOME, the internal logistics and business intelligence AI for Success Resources MMI events. Answer questions directly with specific numbers. KEY RULES: QL conversion=10% of show-up pax. QL price=USD 5997. Ala carte avg=USD 4247. Show-up rate=65%. Lucky Draw=9 per pax. Hidden backend cost=40% of QL revenue. Die Die=20 QL, Good to Have=33 QL, Outrageous=56 QL. Blended QL rate=60% country avg + 40% trainer avg. TRAINER QL RATES: Mac Attram 14.7%, Arnon Barnes 12.3%, Alan Hill 10.2%, Robert Riopel 9.7%. COUNTRY SHOW-UP: Malaysia 67.7%, Singapore 75%, Thailand 80.5%, Philippines 78.5%. HISTORICAL P&L: MMI2601KL prod $72846 USD L2 $182501 USD net +$87705. MMI2602SG prod $132886 USD L2 $0 net +$34764. MMI2603BKK prod $67314 USD L2 $100993 USD net +$28565. MMI2605KL prod $66728 USD L2 $76961 USD net -$11186. CURRENT EVENTS: ' + evSummary + '. STOCK: ' + stockSummary;
   fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1000,
-      system: systemPrompt,
-      messages: [{role: 'user', content: q}]
-    })
-  })
-  .then(function(r){ return r.json(); })
-  .then(function(data){
-    var text = (data.content && data.content[0] && data.content[0].text) ? data.content[0].text : 'No response received.';
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, system: systemPrompt, messages: [{role: 'user', content: q}] })
+  }).then(function(r){ return r.json(); }).then(function(data){
+    var text = (data.content && data.content[0] && data.content[0].text) ? data.content[0].text : 'No response.';
     out.innerHTML = '<div class="ai-response">' + lomeFormatAI(text) + '</div>';
-/g,'<br>') + '</div>';
-  })
-  .catch(function(err){
-    // Fallback to rule-based if API fails
+  }).catch(function(err){
     var ql2 = q.toLowerCase();
     var evts = lomeResolveEventsFromQuery(q);
     var fallback = '';
     if(/workbook/.test(ql2)) fallback = lomeWorkbookAnswer(evts);
     if(!fallback) fallback = lomeMaterialQtyAnswer(q, evts);
     if(!fallback) fallback = lomeStockActionAnswer(q, evts);
-    if(!fallback) fallback = '<div class="ai-response" style="color:var(--red)">AI unavailable: ' + err.message + '. Check your connection.</div>';
+    if(!fallback) fallback = '<div class="ai-response" style="color:var(--red)">AI unavailable: ' + err.message + '</div>';
     out.innerHTML = fallback;
   });
 }
