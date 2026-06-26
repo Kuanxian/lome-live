@@ -834,8 +834,9 @@ html[data-theme="dark"] tbody tr:hover td{background:rgba(255,255,255,0.03);}
             <span style="font-size:11px;font-weight:600;color:var(--text2);">📋 Saved vendors <span id="vendor-city-label" style="color:var(--text3);font-weight:400;"></span></span>
             <button class="btn primary" onclick="openAddVendor()" style="font-size:11px;padding:4px 10px;">+ Add vendor</button>
           </div>
-          <div id="vendor-list" style="flex-shrink:0;border-bottom:1px solid var(--border);background:var(--bg1);"></div>
-          <div class="ai-result" id="m-result">
+          <div style="flex:1;overflow-y:auto;scrollbar-width:thin;">
+            <div id="vendor-list" style="border-bottom:2px solid var(--border);background:var(--bg1);"></div>
+            <div id="m-result" style="padding:14px;">
             <div class="ai-empty">
               <div class="ai-empty-icon" style="color:var(--text3);display:flex"><svg class="ic" width="42" height="42" viewBox="0 0 24 24" style="stroke-width:1.4"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h2.3l2.3 12.5a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.6L21 7H5.5"/></svg></div>
               <div style="font-size:13px;font-weight:500">Malaysia Emergency Vendor Directory</div>
