@@ -336,8 +336,8 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
 .pack-prog-row{display:flex;align-items:center;gap:12px;padding:10px 18px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;}
 .pack-prog-track{flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;}
 .pack-prog-fill{height:100%;background:var(--green);border-radius:3px;transition:width .3s;}
-.pack-scroll-wrap{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
-.pack-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:18px;align-content:start;}
+.pack-scroll-wrap{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;display:flex;flex-direction:column;}
+.pack-grid{width:100%;padding:0;}
 .pack-sec{background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;}
 .pack-sec-hd{display:flex;align-items:center;gap:8px;padding:11px 13px;border-bottom:1px solid var(--border);background:var(--bg2);}
 .pack-sec-title{font-size:12.5px;font-weight:600;flex:1;}
@@ -566,7 +566,7 @@ html[data-theme="dark"] tbody tr:hover td{background:rgba(255,255,255,0.03);}
   <div class="nav-item" onclick="showPage('pnl',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><line x1="3" y1="20.5" x2="21" y2="20.5"/><rect x="5" y="11" width="3.4" height="7.5" rx="1"/><rect x="10.3" y="6" width="3.4" height="12.5" rx="1"/><rect x="15.6" y="14" width="3.4" height="4.5" rx="1"/></svg></span>Event P&amp;L</div>
   <div class="nav-section" style="margin-top:4px;display:flex;align-items:center;justify-content:space-between;padding-right:10px;"><span>Events</span><button onclick="openAddEvent()" style="font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid rgba(143,180,255,.35);background:rgba(47,107,255,.18);color:var(--side-blue);cursor:pointer;font-weight:600;">+ Add</button></div>
   <div class="sidebar-events" id="sidebar-events"></div>
-  <div class="sidebar-foot">LOME v2.0 · Success Resources</div>
+  <div class="sidebar-foot">LOME v3.0 · Success Resources</div>
 </aside>
 
 <!-- MAIN -->
@@ -696,7 +696,7 @@ html[data-theme="dark"] tbody tr:hover td{background:rgba(255,255,255,0.03);}
         </select>
         <span style="font-size:11px;color:var(--text3)" id="pack-pax-note"></span>
         <div class="tgap"></div>
-        <button class="btn" onclick="resetPack()">Reset checklist</button>
+        
         <button class="btn teal" onclick="exportPackingPlan()"><svg viewBox="0 0 24 24"><path d="M12 4v12"/><polyline points="7 11 12 16 17 11"/><path d="M5 20h14"/></svg>Export packing plan</button>
       </div>
       <div class="pack-prog-row">
@@ -739,7 +739,7 @@ html[data-theme="dark"] tbody tr:hover td{background:rgba(255,255,255,0.03);}
             <div style="display:flex;align-items:flex-start;gap:10px;background:rgba(37,99,235,.06);border:1px solid rgba(37,99,235,.14);border-radius:var(--radius-lg);padding:12px 14px;">
               <div style="color:var(--accent);display:flex"><svg class="ic" width="22" height="22" viewBox="0 0 24 24"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M19 13.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></svg></div>
               <div style="font-size:12px;color:var(--text2);line-height:1.7;">
-                <b style="color:var(--text)">Ask LOME uses your internal app data only.</b><br>
+                <b style="color:var(--text)"></b><br>
                 It reads forecast, stock, warehouse, packing and event readiness data. It does not search Google or find live external sources unless a future backend/API is connected.
               </div>
             </div>
@@ -816,7 +816,7 @@ html[data-theme="dark"] tbody tr:hover td{background:rgba(255,255,255,0.03);}
           <div class="ai-form" style="flex-direction:row;align-items:flex-end;">
             <div class="ai-fg">
               <div class="ai-label">Event city</div>
-              <select class="ai-select" id="m-event">
+              <select class="ai-select" id="m-event" onchange="renderVendorList()">
                 <option value="SG">Singapore</option>
                 <option value="BKK">Bangkok</option>
                 <option value="JB">Johor Bahru</option>
@@ -830,6 +830,11 @@ html[data-theme="dark"] tbody tr:hover td{background:rgba(255,255,255,0.03);}
             <button class="btn primary" onclick="runMaterialsSearch()" style="white-space:nowrap">✦ Match vendors</button>
           </div>
           <div class="mat-chips" id="mat-chips"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:var(--bg1);border-bottom:1px solid var(--border);flex-shrink:0;">
+            <span style="font-size:11px;font-weight:600;color:var(--text2);">📋 Saved vendors <span id="vendor-city-label" style="color:var(--text3);font-weight:400;"></span></span>
+            <button class="btn primary" onclick="openAddVendor()" style="font-size:11px;padding:4px 10px;">+ Add vendor</button>
+          </div>
+          <div id="vendor-list" style="flex-shrink:0;border-bottom:1px solid var(--border);max-height:160px;overflow-y:auto;background:var(--bg1);"></div>
           <div class="ai-result" id="m-result">
             <div class="ai-empty">
               <div class="ai-empty-icon" style="color:var(--text3);display:flex"><svg class="ic" width="42" height="42" viewBox="0 0 24 24" style="stroke-width:1.4"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h2.3l2.3 12.5a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.6L21 7H5.5"/></svg></div>
@@ -1092,6 +1097,53 @@ html[data-theme="dark"] tbody tr:hover td{background:rgba(255,255,255,0.03);}
   </div>
 </div>
 
+<!-- ── ADD VENDOR MODAL ── -->
+<div class="overlay" id="add-vendor-modal">
+  <div class="modal" style="width:480px;">
+    <div class="modal-hd">
+      <div><div class="modal-title">+ Add Vendor</div><div class="modal-sub">Save a trusted local supplier to your directory</div></div>
+      <button class="modal-x" onclick="closeAddVendor()">✕</button>
+    </div>
+    <div class="modal-bd" style="display:flex;flex-direction:column;gap:11px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div>
+          <div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Vendor name</div>
+          <input id="vnd-name" style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);" placeholder="e.g. Print Masters SG"/>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">City</div>
+          <select id="vnd-city" style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);">
+            <option value="SG">Singapore</option>
+            <option value="BKK">Bangkok</option>
+            <option value="JB">Johor Bahru</option>
+            <option value="KL">Kuala Lumpur</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">What they supply</div>
+          <input id="vnd-type" style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);" placeholder="e.g. Printing, Wristbands, Banners"/>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Contact number</div>
+          <input id="vnd-contact" style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);" placeholder="+65 9123 4567"/>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">WhatsApp number</div>
+          <input id="vnd-wa" style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);" placeholder="+65 9123 4567"/>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Notes</div>
+          <input id="vnd-notes" style="width:100%;padding:7px 10px;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);" placeholder="e.g. Good for bulk, fast turnaround"/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="closeAddVendor()">Cancel</button>
+      <button class="btn primary" onclick="confirmAddVendor()">+ Add vendor</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── LIVE SYNC MODAL ── -->
 <div class="overlay" id="sync-modal">
   <div class="modal" style="width:600px;max-width:94vw;">
@@ -1194,7 +1246,7 @@ html[data-theme="dark"] tbody tr:hover td{background:rgba(255,255,255,0.03);}
 
       <div class="ev-tabs" id="sync-ev-tabs"></div>
       <div style="margin-bottom:14px;">
-        <div style="font-size:11px;color:var(--text2);margin-bottom:5px;font-weight:500;">Published CSV URL for this event</div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:5px;font-weight:500;">Apps Script Web App URL</div>
         <div style="display:flex;gap:8px;">
           <input type="url" id="sync-url-input"
             placeholder="https://script.google.com/macros/s/AKfy.../exec"
@@ -1352,8 +1404,8 @@ function refreshAllSharedViews(){
 // CORE DATA
 // ═══════════════════════════════════════════════════════════════
 const EVENTS=[
-  {id:'SG', code:'MMI-2607-SG', city:'Singapore',   date:'10–12 Jul 2026', days:51,  target:250, status:'warn',
-   reg:191, regWeekly:[2,1,5,13,47,42,38,18,11], regWeeks:['W07','W08','W14','W15','W16','W17','W18','W19','W20'],
+  {id:'SG', code:'MMI-2607-SG', city:'Singapore',   date:'10–12 Jul 2026', days:14,  target:250, status:'warn',
+   reg:277, regWeekly:[2,1,5,13,47,42,38,18,11], regWeeks:['W07','W08','W14','W15','W16','W17','W18','W19','W20'],
    forecast:0, showUp:0, vipPct:38, qlPct:10, lastImport:null},
   {id:'BKK',code:'MMI-2607-BKK',city:'Bangkok',     date:'24–26 Jul 2026', days:65,  target:250, status:'tbd',
    reg:null, regWeekly:[], regWeeks:[], forecast:0, showUp:0, vipPct:35, qlPct:10, lastImport:null, isBKK:true, thaiPct:60},
@@ -1461,6 +1513,14 @@ const PACK_SECTIONS=[
 const STAT_DATA=[
   {n:1,item:'2-hole Puncher',base:10},{n:2,item:'3×5 Cards',base:300},{n:3,item:'A4 Paper',base:'1 ream'},{n:4,item:'Binding Tape 60mm Black',base:10},{n:5,item:'Calculator (handheld)',base:10},{n:6,item:'Call Bell',base:2},{n:7,item:'Clear Film – Pallet Packing',base:2},{n:8,item:'Clear Tape 48mm',base:20},{n:9,item:'Clipboard',base:20},{n:10,item:"2'×3' Flipchart Paper",base:'6 pads',remark:'4 stage · 2 sales'},{n:11,item:'Glue Stick',base:10},{n:12,item:'Tissue Box',base:'10 boxes'},{n:13,item:'Masking Tape 15mm',base:10},{n:14,item:'Masking Tape 24mm',base:10},{n:15,item:'Masking Tape 48mm',base:10},{n:16,item:'Paper Clips (small+large)',base:'2 boxes each'},{n:17,item:'Paper Tray',base:10},{n:18,item:'Pen – Black',base:250,scalable:true},{n:19,item:'Pen – Blue',base:250,scalable:true},{n:20,item:'Penknife',base:5},{n:21,item:'Post-it 1×2"',base:10},{n:22,item:'Post-it 3×3"',base:10},{n:23,item:'Post-it 3×5"',base:10},{n:24,item:'Rubber Bands',base:'1 big bag'},{n:25,item:'Scissors',base:10},{n:26,item:'Scotch Tape',base:10},{n:27,item:'Sharpies',base:20},{n:28,item:'Stapler – Big',base:5},{n:29,item:'Stapler – Bullet',base:40},{n:30,item:'Counter Clicker',base:3},{n:31,item:'Acrylic Stand',base:10},
 ];
+
+
+// Auto-recalculate days remaining from real event dates every load
+(function(){
+  const D={'SG':new Date('2026-07-10'),'BKK':new Date('2026-07-24'),'JB':new Date('2026-07-31'),'KL':new Date('2026-10-30')};
+  const t=new Date();t.setHours(0,0,0,0);
+  EVENTS.forEach(ev=>{if(D[ev.id])ev.days=Math.max(0,Math.round((D[ev.id]-t)/86400000));});
+})();
 
 // ═══════════════════════════════════════════════════════════════
 // INVENTORY STATE — shared pool, tracked per event
@@ -2345,59 +2405,76 @@ function exportInventory(){
 // PACKING PLAN — driven by show-up pax + stock check
 // ═══════════════════════════════════════════════════════════════
 function renderPackingPlan(){
-  const evId=document.getElementById('pack-ev-sel').value;
-  const ev=EVENTS.find(e=>e.id===evId);
-  const showUp=ev.showUp||0;
-  const buffered=Math.round(showUp*1.05);
+  const evId   = document.getElementById('pack-ev-sel').value;
+  const ev     = EVENTS.find(e=>e.id===evId);
+  const showUp = ev?.showUp || 0;
+  const buf    = Math.round(showUp * 1.05);
 
-  document.getElementById('pack-pax-note').textContent=
-    ev.reg?`Registered: ${ev.reg} · Forecast: ${ev.forecast} · Show-up @65%: ~${showUp} · Pack qty (5% buf): ${buffered}`:'No registration data — import a list first';
+  document.getElementById('pack-pax-note').textContent = ev?.reg
+    ? 'Registered: ' + ev.reg + '  ·  Show-up ~' + showUp + '  ·  Pack qty (+5% buffer): ' + buf
+    : 'No registration data — import a list first';
 
-  const allItems=PACK_SECTIONS.flatMap(s=>s.items);
-  const done=allItems.filter(i=>packChecked[evId+'_'+i.code]).length;
-  document.getElementById('pack-prog-fill').style.width=(allItems.length?Math.round(done/allItems.length*100):0)+'%';
-  document.getElementById('pack-prog-count').textContent=`${done} / ${allItems.length} packed`;
+  const progRow = document.querySelector('.pack-prog-row');
+  if(progRow) progRow.style.display = 'none';
 
-  document.getElementById('pack-grid').innerHTML=PACK_SECTIONS.map(sec=>{
-    const secDone=sec.items.filter(i=>packChecked[evId+'_'+i.code]).length;
-    return`<div class="pack-sec">
-      <div class="pack-sec-hd">
-        <span style="font-size:15px">${sec.icon}</span>
-        <span class="pack-sec-title">${sec.sec}</span>
-        <span class="pack-sec-cnt">${secDone}/${sec.items.length}</span>
-      </div>
-      ${sec.items.map(it=>{
-        // check if this item has a matching print item in inventory
-        const matchCode=it.code.startsWith('A')?null:it.code;
-        const matchItem=matchCode?ITEMS.find(pi=>pi.code===matchCode):null;
-        let qtyDisplay=it.paxDriven?`${showUp} arrows`:(it.qty==='per pax'?`${showUp} pcs`:it.qty);
-        let stockBadge='';
-        if(matchItem){
-          const need=getNeededForEvent(matchItem.code,evId);
-          const stock=inventory[matchItem.code].stock;
-          const gap=getOrderGap(matchItem.code,evId);
-          if(gap===0){
-            stockBadge=`<span class="pack-stock-badge psb-ok">Stock: ${stock} ✓</span>`;
-          } else {
-            stockBadge=`<span class="pack-stock-badge psb-out">Order ${gap} more</span>`;
-          }
-          qtyDisplay=need||it.qty;
-        }
-        const ck=packChecked[evId+'_'+it.code];
-        return`<div class="pack-row" onclick="togglePack('${evId}','${it.code}')">
-          <div class="pack-chk ${ck?'done':''}">${ck?'✓':''}</div>
-          <div class="pack-body">
-            <div class="pack-name" style="${ck?'text-decoration:line-through;color:var(--text3)':''}">${it.name}</div>
-            ${it.note?`<div class="pack-note">${it.note}</div>`:''}
-          </div>
-          <div class="pack-right">
-            <div class="pack-qty-row"><span class="pack-qty">${qtyDisplay}</span>${stockBadge}</div>
-            <div class="pack-code">${it.code}</div>
-          </div>
-        </div>`;
-      }).join('')}
-    </div>`;
+  // Shared cell styles
+  const tdCode  = 'padding:8px 16px;font-size:11px;font-weight:500;color:var(--accent);white-space:nowrap;';
+  const tdItem  = 'padding:8px 16px;font-size:12px;font-weight:400;color:var(--text);line-height:1.4;';
+  const tdQty   = 'padding:8px 16px;text-align:center;font-size:12px;font-weight:600;color:var(--text);';
+  const tdStock = 'padding:8px 16px;text-align:right;';
+  const secHdr  = 'padding:6px 16px;font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);';
+  const rowSt   = 'border-bottom:1px solid var(--border);';
+
+  const packRows = PACK_SECTIONS.map(sec=>{
+    const hdr = '<tr><td colspan="4" style="' + secHdr + '">' + sec.icon + ' ' + sec.sec + '</td></tr>';
+    const rows = sec.items.map(it=>{
+      const matchItem = it.code.startsWith('A') ? null : ITEMS.find(pi=>pi.code===it.code);
+      let qty = it.qty || '—';
+      if(it.paxDriven || it.qty==='per pax') qty = buf;
+      let badge = '';
+      if(matchItem){
+        try{
+          const need = getNeededForEvent(matchItem.code, evId);
+          const stock = inventory[matchItem.code]?.stock || 0;
+          const gap   = getOrderGap(matchItem.code, evId);
+          if(need) qty = need;
+          badge = gap===0
+            ? '<span style="font-size:10px;font-weight:500;padding:2px 8px;border-radius:20px;background:var(--green-bg);color:var(--green);">✓ ' + stock + ' in stock</span>'
+            : '<span style="font-size:10px;font-weight:500;padding:2px 8px;border-radius:20px;background:var(--red-bg);color:var(--red);">Order ' + gap + ' more</span>';
+        }catch(e){}
+      }
+      const note = it.note ? '<div style="font-size:10px;color:var(--text3);margin-top:1px;">' + it.note + '</div>' : '';
+      return '<tr style="' + rowSt + '">'
+        + '<td style="' + tdCode + '">' + it.code + '</td>'
+        + '<td style="' + tdItem + '">' + it.name + note + '</td>'
+        + '<td style="' + tdQty  + '">' + qty + '</td>'
+        + '<td style="' + tdStock + '">' + badge + '</td>'
+        + '</tr>';
+    }).join('');
+    return hdr + rows;
   }).join('');
+
+  const statHdr = '<tr><td colspan="4" style="' + secHdr + '">📋 Stationery & Office Supplies</td></tr>';
+  const statRows = STAT_DATA.map(it=>{
+    const scaled = typeof it.base==='number' && showUp>0 ? Math.round(it.base*showUp/148) : it.base;
+    return '<tr style="' + rowSt + '">'
+      + '<td style="' + tdCode + 'color:var(--text3);">#' + it.n + '</td>'
+      + '<td style="' + tdItem + '">' + it.item + '</td>'
+      + '<td style="' + tdQty  + '">' + scaled + '</td>'
+      + '<td style="' + tdStock + '"></td>'
+      + '</tr>';
+  }).join('');
+
+  document.getElementById('pack-grid').innerHTML =
+    '<table style="width:100%;border-collapse:collapse;">'
+    + '<thead><tr style="position:sticky;top:0;z-index:2;background:var(--bg1);box-shadow:0 1px 0 var(--border);">'
+    + '<th style="padding:8px 16px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;width:70px;">Code</th>'
+    + '<th style="padding:8px 16px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;">Item</th>'
+    + '<th style="padding:8px 16px;text-align:center;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;width:80px;">Qty</th>'
+    + '<th style="padding:8px 16px;text-align:right;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;width:160px;">Stock</th>'
+    + '</tr></thead>'
+    + '<tbody>' + packRows + statHdr + statRows + '</tbody>'
+    + '</table>';
 }
 
 function togglePack(evId,code){
@@ -2892,7 +2969,7 @@ function switchAiTab(tab,el){
   document.querySelectorAll('.ai-sub').forEach(s=>s.classList.remove('on'));
   el.classList.add('on');
   document.getElementById('ai-sub-'+tab).classList.add('on');
-  if(tab==='materials') buildMatChips();
+  if(tab==='materials'){ buildMatChips(); renderVendorList(); }
   if(tab==='delegate') populateDelegateDropdowns();
 }
 
@@ -3068,6 +3145,69 @@ function runVenueSearch(){
     </div>
     <div class="ai-action-row">${mapsLinks}</div>
     <div class="ai-action-row">${searchLinks}${makeLink(googleSearchUrl(emailQuery),'Find sales contacts','☎️')}</div>`;
+}
+
+// ── VENDOR MANAGEMENT ─────────────────────────────────────────────────────
+let customVendors = [];
+
+function loadVendors(){
+  try{ customVendors=JSON.parse(localStorage.getItem('lome_vendors')||'[]'); }catch(e){ customVendors=[]; }
+}
+function saveVendors(){
+  try{ localStorage.setItem('lome_vendors',JSON.stringify(customVendors)); }catch(e){}
+}
+function openAddVendor(){
+  document.getElementById('add-vendor-modal').classList.add('show');
+  ['vnd-name','vnd-type','vnd-contact','vnd-wa','vnd-notes'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('vnd-city').value = document.getElementById('m-event')?.value||'SG';
+}
+function closeAddVendor(){
+  document.getElementById('add-vendor-modal').classList.remove('show');
+}
+function confirmAddVendor(){
+  const name=document.getElementById('vnd-name').value.trim();
+  const city=document.getElementById('vnd-city').value;
+  const type=document.getElementById('vnd-type').value.trim();
+  const contact=document.getElementById('vnd-contact').value.trim();
+  const wa=document.getElementById('vnd-wa').value.trim();
+  const notes=document.getElementById('vnd-notes').value.trim();
+  if(!name||!type){ showToast('Please fill in vendor name and what they supply'); return; }
+  customVendors.push({id:Date.now(),name,city,type,contact,wa,notes,added:new Date().toLocaleDateString()});
+  saveVendors();
+  closeAddVendor();
+  renderVendorList();
+  showToast('✓ '+name+' added to your vendor directory');
+}
+function deleteVendor(id){
+  customVendors=customVendors.filter(v=>v.id!==id);
+  saveVendors();
+  renderVendorList();
+  showToast('Vendor removed');
+}
+function renderVendorList(){
+  const city = document.getElementById('m-event')?.value || 'SG';
+  const names = {SG:'Singapore',BKK:'Bangkok',JB:'Johor Bahru',KL:'Kuala Lumpur'};
+  const list = document.getElementById('vendor-list');
+  if(!list) return;
+  const filtered = customVendors.filter(function(v){ return v.city === city; });
+  if(!filtered.length){
+    list.innerHTML = '<div style="padding:12px 16px;font-size:11px;color:var(--text3);">No saved vendors for ' + (names[city]||city) + ' yet. Click + Add vendor above.</div>';
+    return;
+  }
+  list.innerHTML = filtered.map(function(v){
+    var waBtn = v.wa ? '<a href="https://wa.me/' + v.wa.replace(/[^0-9]/g,'') + '" target="_blank" class="btn" style="font-size:10px;padding:4px 9px;background:var(--green-bg);color:var(--green);">WhatsApp</a>' : '';
+    var delBtn = '<button onclick="deleteVendor(' + v.id + ')" class="btn" style="font-size:10px;padding:4px 8px;color:var(--red);background:var(--red-bg);">Remove</button>';
+    var contact = v.contact ? '<div style="font-size:10px;color:var(--text2);margin-top:2px;">Tel: ' + v.contact + '</div>' : '';
+    var notes = v.notes ? '<div style="font-size:10px;color:var(--text3);margin-top:1px;">' + v.notes + '</div>' : '';
+    return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);">'
+      + '<div style="flex:1;">'
+      + '<div style="font-size:12px;font-weight:600;">' + v.name + '</div>'
+      + '<div style="font-size:10px;color:var(--text3);margin-top:1px;">' + v.type + '</div>'
+      + contact + notes
+      + '</div>'
+      + '<div style="display:flex;gap:5px;flex-shrink:0;align-items:center;">' + waBtn + delBtn + '</div>'
+      + '</div>';
+  }).join('');
 }
 
 function runMaterialsSearch(){
@@ -3992,6 +4132,8 @@ async function runAutoSyncs(){
 
 // Close on overlay click
 document.addEventListener('DOMContentLoaded', ()=>{
+  document.getElementById('add-vendor-modal')?.addEventListener('click',e=>{if(e.target===document.getElementById('add-vendor-modal'))closeAddVendor();});
+  if(typeof loadVendors==='function') loadVendors();
   document.getElementById('sync-modal').addEventListener('click', e=>{
     if(e.target===document.getElementById('sync-modal')) closeSyncModal();
   });
