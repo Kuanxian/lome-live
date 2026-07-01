@@ -1415,8 +1415,30 @@ const EVENTS=[
    forecast:0, showUp:0, vipPct:38, qlPct:10, lastImport:null},
 ];
 
+// "days" is derived from ev.date vs today — never store it as a static number,
+// it goes stale the moment a day passes without someone manually editing it.
+const MONTH_ABBR=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function parseEventStartDate(dateStr){
+  if(!dateStr) return null;
+  const yearMatch=dateStr.match(/\d{4}/);
+  const dayMatch=dateStr.match(/\d{1,2}/);
+  const monthMatch=dateStr.match(/Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec/);
+  if(!yearMatch||!dayMatch||!monthMatch) return null;
+  return new Date(parseInt(yearMatch[0],10), MONTH_ABBR.indexOf(monthMatch[0]), parseInt(dayMatch[0],10));
+}
+function recomputeEventDays(){
+  const today=new Date(); today.setHours(0,0,0,0);
+  EVENTS.forEach(ev=>{
+    const start=parseEventStartDate(ev.date);
+    if(!start) return;
+    start.setHours(0,0,0,0);
+    ev.days=Math.max(0,Math.round((start-today)/86400000));
+  });
+}
+
 // Compute forecasts on load
 function computeForecasts(){
+  recomputeEventDays();
   const sr=parseInt(document.getElementById('show-rate')?.value||'65')/100;
   EVENTS.forEach(ev=>{
     if(!ev.reg){ev.forecast=0;ev.showUp=0;return;}
