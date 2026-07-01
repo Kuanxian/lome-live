@@ -614,6 +614,7 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
             <select id="stock-admin-warehouse" class="packing-ev-sel" onchange="renderStockAdminTable()"></select>
             <div class="inv-search" style="max-width:300px"><span class="s-ico">⌕</span><input id="stock-admin-search" placeholder="Search item or code…" oninput="renderStockAdminTable()"/></div>
             <div class="tgap"></div>
+            <button class="btn" onclick="openVendorModal()">🏭 Manage Vendors</button>
             <button class="btn success" onclick="saveInventory()">💾 Save stock</button>
             <button class="btn teal" onclick="exportWarehouseStock()">⬇ Export warehouse stock</button>
           </div>
@@ -1050,6 +1051,26 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
   </div>
 </div>
 
+<!-- ── MANAGE VENDORS MODAL ── -->
+<div class="overlay" id="vendor-modal">
+  <div class="modal" style="width:440px;max-width:94vw;">
+    <div class="modal-hd">
+      <div><div class="modal-title">🏭 Manage Vendors</div><div class="modal-sub">This list feeds the Preferred Vendor dropdown in Admin Stock Input</div></div>
+      <button class="modal-x" onclick="closeVendorModal()">✕</button>
+    </div>
+    <div class="modal-bd" style="display:flex;flex-direction:column;gap:12px;">
+      <div style="display:flex;gap:8px;">
+        <input id="new-vendor-input" style="flex:1;padding:8px 11px;font-size:12px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);" placeholder="Vendor name…" onkeydown="if(event.key==='Enter')addPreferredVendor()"/>
+        <button class="btn primary" onclick="addPreferredVendor()">+ Add</button>
+      </div>
+      <div id="vendor-list" style="display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="closeVendorModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── LIVE SYNC MODAL ── -->
 <div class="overlay" id="sync-modal">
   <div class="modal" style="width:600px;max-width:94vw;">
@@ -1328,6 +1349,10 @@ function initFirebaseLiveSync(){
         syncConfig = data.syncConfig || {};
         try{ localStorage.setItem('lome_sync', JSON.stringify(syncConfig)); }catch(e){}
       }
+      if(Array.isArray(data.vendors)){
+        PREFERRED_VENDORS = data.vendors;
+        try{ localStorage.setItem('lome_vendors', JSON.stringify(PREFERRED_VENDORS)); }catch(e){}
+      }
       refreshAllSharedViews();
       cloudApplyingRemote = false;
     }, err=>{
@@ -1356,6 +1381,7 @@ function scheduleCloudSave(){
         inventory: getInventoryPayload(),
         events: getEventsPayload(),
         syncConfig: syncConfig || {},
+        vendors: PREFERRED_VENDORS || [],
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
         updatedBy: getClientLabel()
       }, { merge:true });
@@ -1541,8 +1567,17 @@ ITEMS.forEach(it=>{
     lastRestocked: '',
     condition: it.reusable ? 'Good' : '',
     notes: '',
+    vendor: it.vendor || '',  // editable per item — overrides the ITEMS default below
   };
 });
+
+// Preferred vendor list — shared across all staff, editable via the Manage Vendors modal.
+// Seeded from the vendors already used in ITEMS above.
+let PREFERRED_VENDORS = ['Kadpo Industry (PG)', 'Rafflestag Malaysia', 'Hot Print Media (PG)'];
+function getItemVendor(it){
+  const v = inventory[it.code]?.vendor;
+  return (v && v.trim()) ? v : (it.vendor || '—');
+}
 
 let invFilter='all';
 let packChecked={};
@@ -2301,6 +2336,7 @@ function getInventoryPayload(){
       lastRestocked:inv.lastRestocked|| '',
       condition:    inv.condition    || (it.reusable?'Good':''),
       notes:        inv.notes        || '',
+      vendor:       inv.vendor       ?? (it.vendor||''),
     };
   });
   return data;
@@ -2320,6 +2356,7 @@ function applyInventoryData(data){
     if(d.lastRestocked)                  inventory[it.code].lastRestocked= d.lastRestocked;
     if(d.condition!==undefined)          inventory[it.code].condition    = d.condition;
     if(d.notes!==undefined)              inventory[it.code].notes        = d.notes;
+    if(d.vendor!==undefined)             inventory[it.code].vendor       = d.vendor;
   });
 }
 
@@ -2370,6 +2407,18 @@ function loadEventsFromLocal(){
     const raw=localStorage.getItem('lome_events');
     if(raw) applyEventsData(JSON.parse(raw));
   }catch(e){ console.error('loadEventsFromLocal:', e); }
+}
+
+function saveVendorsQuiet(){
+  try{ localStorage.setItem('lome_vendors', JSON.stringify(PREFERRED_VENDORS)); }catch(e){}
+  scheduleCloudSave();
+}
+
+function loadVendorsFromLocal(){
+  try{
+    const raw=localStorage.getItem('lome_vendors');
+    if(raw){ const arr=JSON.parse(raw); if(Array.isArray(arr)) PREFERRED_VENDORS=arr; }
+  }catch(e){ console.error('loadVendorsFromLocal:', e); }
 }
 
 function saveInventoryQuiet(){
@@ -2737,7 +2786,7 @@ function exportXlsx(){
     ITEMS.forEach(it=>{
       const need=getNeededQty(it,ev);
       const stock=inventory[it.code].stock;
-      rows.push([ev.code,ev.date,ev.city,it.cat,it.item,it.code,it.spec,need,stock,stock-need,getStockStatus(it.code),it.vendor]);
+      rows.push([ev.code,ev.date,ev.city,it.cat,it.item,it.code,it.spec,need,stock,stock-need,getStockStatus(it.code),getItemVendor(it)]);
     });
   });
   const ws=XLSX.utils.aoa_to_sheet(rows);
@@ -2906,6 +2955,7 @@ function startLomeApp(){
   appStarted = true;
   loadInventory();
   loadEventsFromLocal();
+  loadVendorsFromLocal();
   loadSyncConfig();
   initFirebaseLiveSync();
   computeForecasts();
@@ -4168,7 +4218,7 @@ function getEventStockRows(ev){
     else if(shortfall===0){ action='Ready'; actionType='ready'; actionText=`Reserve ${need} from ${getWarehouseName(wh)}.`; }
     else if(other && other.available>=shortfall){ action='Transfer'; actionType='transfer'; actionText=`Transfer ${shortfall} from ${other.name}.`; }
     else if(/pen|paper|tape|scissor|marker|stationery|clip|glue|calculator|puncher|stapler|post-it/i.test(it.item)){ action='Buy Local'; actionType='local'; actionText=`Buy ${shortfall} locally in ${getWarehouseName(wh).replace(' Warehouse','')}.`; }
-    else { action='Order'; actionType='order'; actionText=`Order ${shortfall} from ${it.vendor && it.vendor!=='—' ? it.vendor : 'approved vendor'}.`; }
+    else { const v=getItemVendor(it); action='Order'; actionType='order'; actionText=`Order ${shortfall} from ${v!=='—' ? v : 'approved vendor'}.`; }
     const urgent = shortfall>0 && ev.days <= lead;
     return {item:it, wh, need, local, shortfall, other, crit, lead, action, actionType, actionText, urgent};
   });
@@ -4308,8 +4358,54 @@ function renderStockAdminTable(){
     <div class="is"><div class="is-l">Reserved units</div><div class="is-v" style="color:var(--amber)">${reserved.toLocaleString()}</div></div>`;
   document.getElementById('stock-admin-tbody').innerHTML=activeRows.map(it=>{
     const inv=inventory[it.code]; const phys=inv.wh[wh]||0; const res=inv.reserved[wh]||0; const avail=Math.max(0,phys-res);
-    return `<tr><td><span class="code-tag">${it.code}</span></td><td><div class="item-name">${escapeHTML(it.item)}</div><div class="item-spec">${escapeHTML(it.spec||'')}</div></td><td style="text-align:center">${it.reusable?'<span class="reusable-tag">♻ Reusable</span>':'<span class="consumable-tag">📦 Consumable</span>'}</td><td style="text-align:center"><input class="stock-admin-input" type="number" min="0" value="${phys}" onchange="setWarehouseStock('${it.code}','${wh}',+this.value)"></td><td style="text-align:center"><span class="mono-num" style="color:var(--amber)">${res||'—'}</span></td><td style="text-align:center"><span class="mono-num" style="color:${avail>0?'var(--green)':'var(--text3)'}">${avail||'—'}</span></td><td><input class="stock-note-input" type="date" value="${inv.lastChecked||''}" onchange="setStockAdminField('${it.code}','lastChecked',this.value)"></td><td><input class="stock-note-input" type="text" placeholder="Notes…" value="${escapeHTML(inv.adminNotes||'')}" oninput="setStockAdminField('${it.code}','adminNotes',this.value)"></td><td style="font-size:11px;color:var(--text3);white-space:nowrap">${escapeHTML(it.vendor||'—')}</td></tr>`;
+    return `<tr><td><span class="code-tag">${it.code}</span></td><td><div class="item-name">${escapeHTML(it.item)}</div><div class="item-spec">${escapeHTML(it.spec||'')}</div></td><td style="text-align:center">${it.reusable?'<span class="reusable-tag">♻ Reusable</span>':'<span class="consumable-tag">📦 Consumable</span>'}</td><td style="text-align:center"><input class="stock-admin-input" type="number" min="0" value="${phys}" onchange="setWarehouseStock('${it.code}','${wh}',+this.value)"></td><td style="text-align:center"><span class="mono-num" style="color:var(--amber)">${res||'—'}</span></td><td style="text-align:center"><span class="mono-num" style="color:${avail>0?'var(--green)':'var(--text3)'}">${avail||'—'}</span></td><td><input class="stock-note-input" type="date" value="${inv.lastChecked||''}" onchange="setStockAdminField('${it.code}','lastChecked',this.value)"></td><td><input class="stock-note-input" type="text" placeholder="Notes…" value="${escapeHTML(inv.adminNotes||'')}" oninput="setStockAdminField('${it.code}','adminNotes',this.value)"></td><td>${vendorSelectHtml(it.code, inv.vendor||'')}</td></tr>`;
   }).join('') || `<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:28px">No items match.</td></tr>`;
+}
+function vendorSelectHtml(code, selected){
+  const list=PREFERRED_VENDORS.slice();
+  if(selected && !list.includes(selected)) list.push(selected);
+  const opts=['<option value="">— None —</option>'].concat(
+    list.map(v=>`<option value="${escapeHTML(v)}" ${v===selected?'selected':''}>${escapeHTML(v)}</option>`)
+  );
+  return `<select class="stock-note-input" style="min-width:150px" onchange="setItemVendor('${code}',this.value)">${opts.join('')}</select>`;
+}
+function setItemVendor(code, val){
+  ensureWarehouseStock();
+  inventory[code].vendor=val;
+  saveInventoryQuiet();
+}
+function openVendorModal(){
+  renderVendorList();
+  document.getElementById('vendor-modal').classList.add('show');
+}
+function closeVendorModal(){
+  document.getElementById('vendor-modal').classList.remove('show');
+}
+function renderVendorList(){
+  const wrap=document.getElementById('vendor-list');
+  wrap.innerHTML = PREFERRED_VENDORS.length ? PREFERRED_VENDORS.map(v=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 11px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);">
+      <span style="font-size:12px;">${escapeHTML(v)}</span>
+      <button class="btn" style="padding:3px 9px;font-size:11px;" onclick="removePreferredVendor('${escapeHTML(v).replace(/'/g,"\\'")}')">Remove</button>
+    </div>`).join('') : `<div style="font-size:12px;color:var(--text3);text-align:center;padding:14px">No vendors yet — add one above.</div>`;
+}
+function addPreferredVendor(){
+  const input=document.getElementById('new-vendor-input');
+  const name=(input?.value||'').trim();
+  if(!name) return;
+  if(PREFERRED_VENDORS.some(v=>v.toLowerCase()===name.toLowerCase())){ showToast('That vendor is already in the list'); return; }
+  PREFERRED_VENDORS.push(name);
+  saveVendorsQuiet();
+  input.value='';
+  renderVendorList();
+  if(stockMode==='admin') renderStockAdminTable();
+  showToast(`✓ ${name} added to vendor list`);
+}
+function removePreferredVendor(name){
+  PREFERRED_VENDORS = PREFERRED_VENDORS.filter(v=>v!==name);
+  saveVendorsQuiet();
+  renderVendorList();
+  if(stockMode==='admin') renderStockAdminTable();
 }
 function setWarehouseStock(code, wh, val){
   ensureWarehouseStock();
@@ -4355,14 +4451,14 @@ function exportStockReadiness(){
   const evId=document.getElementById('stock-event-select')?.value || EVENTS[0].id;
   const ev=EVENTS.find(e=>e.id===evId)||EVENTS[0];
   const rows=[['Event',ev.code],['Warehouse',getWarehouseName(getEventWarehouse(ev))],[],['Code','Material','Need','Local Available','Shortfall','Criticality','Action','Recommendation','Vendor']];
-  getEventStockRows(ev).forEach(x=>rows.push([x.item.code,x.item.item,x.need,x.local,x.shortfall,x.crit,x.action,x.actionText,x.item.vendor||'']));
+  getEventStockRows(ev).forEach(x=>rows.push([x.item.code,x.item.item,x.need,x.local,x.shortfall,x.crit,x.action,x.actionText,getItemVendor(x.item)]));
   const ws=XLSX.utils.aoa_to_sheet(rows); ws['!cols']=[{wch:10},{wch:42},{wch:10},{wch:14},{wch:10},{wch:12},{wch:12},{wch:48},{wch:24}];
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Stock Readiness'); XLSX.writeFile(wb,`LOME_Stock_Readiness_${ev.code}_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 function exportWarehouseStock(){
   const wh=document.getElementById('stock-admin-warehouse')?.value || 'MY';
   const rows=[['Warehouse',getWarehouseName(wh)],[],['Code','Material','Physical Stock','Reserved','Available','Last Checked','Notes','Vendor']];
-  ITEMS.forEach(it=>{ const inv=inventory[it.code]; const phys=inv.wh?.[wh]||0, res=inv.reserved?.[wh]||0; rows.push([it.code,it.item,phys,res,Math.max(0,phys-res),inv.lastChecked||'',inv.adminNotes||'',it.vendor||'']); });
+  ITEMS.forEach(it=>{ const inv=inventory[it.code]; const phys=inv.wh?.[wh]||0, res=inv.reserved?.[wh]||0; rows.push([it.code,it.item,phys,res,Math.max(0,phys-res),inv.lastChecked||'',inv.adminNotes||'',getItemVendor(it)]); });
   const ws=XLSX.utils.aoa_to_sheet(rows); ws['!cols']=[{wch:10},{wch:42},{wch:14},{wch:10},{wch:10},{wch:14},{wch:28},{wch:24}];
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Warehouse Stock'); XLSX.writeFile(wb,`LOME_Warehouse_${wh}_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
