@@ -1078,91 +1078,111 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
           <button class="btn" style="font-size:10px;padding:3px 9px;flex-shrink:0;" onclick="copyAppsScript()">📋 Copy script</button>
         </div>
         <pre id="apps-script-code" style="background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 12px;font-family:var(--mono);font-size:10px;color:var(--text3);line-height:1.6;max-height:130px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;margin:0;">function doGet(e) {
-  // LOME Sync Script v2 — robust registration parser
-  // Works across SG/BKK/JB/KL/future Master Registration Lists.
+  // LOME Sync Script v3 — reads the sheet&#x27;s own Dashboard totals (SUMIFS-based,
+  // ticket-quantity aware) instead of re-deriving counts from raw rows.
+  // Works across SG/BKK/JB/KL/future Master Registration Lists (all duplicated
+  // from the same template, so Dashboard cell positions stay fixed).
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheets = ss.getSheets();
-  var tab = null;
 
-  // Prefer likely registration tabs, otherwise use first sheet.
+  var dashTab = findSheetByKeyword(sheets, [&#x27;dashboard&#x27;]);
+  var listTab = findSheetByKeyword(sheets, [&#x27;full list&#x27;, &#x27;master&#x27;, &#x27;registration&#x27;, &#x27;attendee&#x27;]) || sheets[0];
+
+  var listResult = readFullList(listTab);
+  var dash = dashTab ? readDashboard(dashTab) : null;
+
+  var useDash = !!(dash &amp;&amp; dash.total &gt; 0);
+  var total = useDash ? dash.total : listResult.total;
+  var vip   = useDash ? dash.vip   : listResult.vip;
+  var std   = useDash ? dash.std   : listResult.std;
+  var ql    = useDash ? dash.ql    : listResult.ql;
+
+  return outputJson({
+    total: total,
+    vip: vip,
+    std: std,
+    ql: ql,
+    vipPct: total &gt; 0 ? Math.round((vip / total) * 100) : 38,
+    thaiPct: listResult.total &gt; 0 ? Math.round((listResult.thai / listResult.total) * 100) : 0,
+    target: dash ? dash.target : null,
+    weekly: listResult.weekly,
+    source: useDash ? &#x27;dashboard&#x27; : &#x27;fulllist-fallback&#x27;,
+    checkTotal: listResult.total,
+    mismatch: useDash ? (total !== listResult.total) : false,
+    sheet: listTab.getName(),
+    updated: new Date().toISOString()
+  });
+}
+
+function findSheetByKeyword(sheets, keywords) {
   for (var s = 0; s &lt; sheets.length; s++) {
     var name = sheets[s].getName().toLowerCase();
-    if (
-      name.indexOf(&#x27;full list&#x27;) &gt;= 0 ||
-      name.indexOf(&#x27;master&#x27;) &gt;= 0 ||
-      name.indexOf(&#x27;registration&#x27;) &gt;= 0 ||
-      name.indexOf(&#x27;attendee&#x27;) &gt;= 0
-    ) {
-      tab = sheets[s];
-      break;
+    for (var k = 0; k &lt; keywords.length; k++) {
+      if (name.indexOf(keywords[k]) &gt;= 0) return sheets[s];
     }
   }
-  if (!tab) tab = sheets[0];
+  return null;
+}
 
+// Reads the Dashboard tab&#x27;s own formula outputs — already computed via SUMIFS
+// on Ticket Quantity, filtered by Ticket Category + status. This is the number
+// the team already treats as official, and it correctly counts multi-seat rows
+// (Ticket Quantity &gt; 1) that a raw row-count would miss.
+function readDashboard(tab) {
+  try {
+    var total = numOrNull(tab.getRange(&#x27;B3&#x27;).getValue());
+    if (total === null) return null;
+    return {
+      total: total,
+      target: numOrNull(tab.getRange(&#x27;C3&#x27;).getValue()),
+      std: numOrNull(tab.getRange(&#x27;G9&#x27;).getValue()) || 0,
+      vip: numOrNull(tab.getRange(&#x27;G13&#x27;).getValue()) || 0,
+      ql: numOrNull(tab.getRange(&#x27;F17&#x27;).getValue()) || 0
+    };
+  } catch (err) {
+    return null;
+  }
+}
+
+function numOrNull(v) {
+  return (typeof v === &#x27;number&#x27; &amp;&amp; !isNaN(v)) ? v : null;
+}
+
+// Same Ticket Category / status whitelist the Dashboard&#x27;s SUMIFS formulas use,
+// so weekly velocity (which the Dashboard doesn&#x27;t summarize) stays consistent
+// with the headline total instead of a separate fuzzy heuristic.
+var VALID_TC = [&#x27;standard&#x27;, &#x27;vip&#x27;];
+var VALID_STATUS = [&#x27;paid&#x27;, &#x27;guest&#x27;, &#x27;complimentary&#x27;, &#x27;ql&#x27;, &#x27;rollover&#x27;];
+
+function readFullList(tab) {
   var data = tab.getDataRange().getValues();
   if (!data || data.length &lt; 2) {
-    return outputJson({ total:0, vip:0, std:0, ql:0, vipPct:38, weekly:{}, sheet:tab.getName(), updated:new Date().toISOString() });
+    return { total:0, vip:0, std:0, ql:0, thai:0, weekly:{} };
   }
 
   var headerRowIndex = findHeaderRow(data);
   var headers = data[headerRowIndex].map(function(h){ return String(h || &#x27;&#x27;).toLowerCase().trim(); });
 
-  var lsCol    = findCol(headers, [&#x27;lead source&#x27;,&#x27;source&#x27;,&#x27;ls&#x27;]);
-  var dateCol  = findCol(headers, [&#x27;date of purchase&#x27;,&#x27;purchase date&#x27;,&#x27;date purchased&#x27;,&#x27;created date&#x27;,&#x27;created at&#x27;,&#x27;date&#x27;]);
-  var typeCol  = findCol(headers, [&#x27;tc&#x27;,&#x27;ticket category&#x27;,&#x27;ticket type&#x27;,&#x27;ticket&#x27;,&#x27;type&#x27;,&#x27;category&#x27;]);
-  var nameCol  = findCol(headers, [&#x27;full name&#x27;,&#x27;name&#x27;,&#x27;first name&#x27;,&#x27;participant&#x27;,&#x27;attendee&#x27;]);
-  var emailCol = findCol(headers, [&#x27;email&#x27;,&#x27;email address&#x27;]);
-  var phoneCol = findCol(headers, [&#x27;phone&#x27;,&#x27;mobile&#x27;,&#x27;contact&#x27;,&#x27;whatsapp&#x27;]);
-  var statusCol= findCol(headers, [&#x27;status&#x27;,&#x27;payment status&#x27;,&#x27;order status&#x27;]);
+  var qtyCol    = findCol(headers, [&#x27;ticket quantity&#x27;, &#x27;quantity&#x27;, &#x27;qty&#x27;]);
+  var tcCol     = findCol(headers, [&#x27;tc&#x27;, &#x27;ticket category&#x27;]);
+  var statusCol = findCol(headers, [&#x27;paid/complimentary/guest/ql&#x27;, &#x27;status&#x27;, &#x27;payment status&#x27;, &#x27;order status&#x27;]);
+  var dateCol   = findCol(headers, [&#x27;date of purchase&#x27;, &#x27;purchase date&#x27;, &#x27;date purchased&#x27;, &#x27;created date&#x27;, &#x27;created at&#x27;, &#x27;date&#x27;]);
 
   var total = 0, vip = 0, std = 0, ql = 0, thai = 0;
   var weekly = {};
 
   for (var i = headerRowIndex + 1; i &lt; data.length; i++) {
     var row = data[i];
-    var rowText = row.join(&#x27; &#x27;).toLowerCase().trim();
+    var tc = tcCol &gt;= 0 ? String(row[tcCol] || &#x27;&#x27;).toLowerCase().trim() : &#x27;&#x27;;
+    var status = statusCol &gt;= 0 ? String(row[statusCol] || &#x27;&#x27;).toLowerCase().trim() : &#x27;&#x27;;
 
-    if (!rowText) continue;
-    if (rowText.indexOf(&#x27;refund&#x27;) &gt;= 0) continue;
-    if (rowText.indexOf(&#x27;cancelled&#x27;) &gt;= 0 || rowText.indexOf(&#x27;canceled&#x27;) &gt;= 0) continue;
-    if (statusCol &gt;= 0) {
-      var st = String(row[statusCol] || &#x27;&#x27;).toLowerCase();
-      if (st.indexOf(&#x27;refund&#x27;) &gt;= 0 || st.indexOf(&#x27;cancel&#x27;) &gt;= 0) continue;
-    }
+    if (VALID_TC.indexOf(tc) &lt; 0 || VALID_STATUS.indexOf(status) &lt; 0) continue;
 
-    // Count a registration if the row has any meaningful attendee / ticket / source data.
-    var hasAttendeeData =
-      hasValue(row, nameCol) ||
-      hasValue(row, emailCol) ||
-      hasValue(row, phoneCol) ||
-      hasValue(row, lsCol) ||
-      hasValue(row, typeCol);
-
-    if (!hasAttendeeData) continue;
-
-    total++;
-
-    var ls = lsCol &gt;= 0 ? String(row[lsCol] || &#x27;&#x27;).toLowerCase().trim() : &#x27;&#x27;;
-    var type = typeCol &gt;= 0 ? String(row[typeCol] || &#x27;&#x27;).toLowerCase().trim() : &#x27;&#x27;;
-
-    var isVip =
-      ls.indexOf(&#x27;vip&#x27;) &gt;= 0 ||
-      type.indexOf(&#x27;vip&#x27;) &gt;= 0 ||
-      rowText.indexOf(&#x27;[vip]&#x27;) &gt;= 0 ||
-      rowText.indexOf(&#x27; vip &#x27;) &gt;= 0;
-
-    if (isVip) vip++; else std++;
-
-    var isQl =
-      ls.indexOf(&#x27;[ql]&#x27;) &gt;= 0 ||
-      ls.indexOf(&#x27;ql buyer&#x27;) &gt;= 0 ||
-      ls === &#x27;ql&#x27; ||
-      rowText.indexOf(&#x27;[ql]&#x27;) &gt;= 0 ||
-      rowText.indexOf(&#x27;ql buyer&#x27;) &gt;= 0 ||
-      rowText.indexOf(&#x27;quantum leaper&#x27;) &gt;= 0;
-
-    if (isQl) ql++;
-    if (rowText.indexOf(&#x27;thai&#x27;) &gt;= 0) thai++;
+    var qty = qtyCol &gt;= 0 ? (Number(row[qtyCol]) || 1) : 1;
+    total += qty;
+    if (tc === &#x27;vip&#x27;) vip += qty; else std += qty;
+    if (status === &#x27;ql&#x27;) ql += qty;
+    if (row.join(&#x27; &#x27;).toLowerCase().indexOf(&#x27;thai&#x27;) &gt;= 0) thai += qty;
 
     if (dateCol &gt;= 0 &amp;&amp; row[dateCol]) {
       var d = parseDate(row[dateCol]);
@@ -1171,24 +1191,12 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
         var startOfYear = new Date(yr, 0, 1);
         var wk = Math.ceil((((d - startOfYear) / 86400000) + startOfYear.getDay() + 1) / 7);
         var key = &#x27;W&#x27; + (&#x27;0&#x27; + wk).slice(-2);
-        weekly[key] = (weekly[key] || 0) + 1;
+        weekly[key] = (weekly[key] || 0) + qty;
       }
     }
   }
 
-  return outputJson({
-    total: total,
-    vip: vip,
-    std: std,
-    ql: ql,
-    vipPct: total &gt; 0 ? Math.round((vip / total) * 100) : 38,
-    thaiPct: thai &gt; 0 &amp;&amp; total &gt; 0 ? Math.round((thai / total) * 100) : 0,
-    weekly: weekly,
-    sheet: tab.getName(),
-    headerRow: headerRowIndex + 1,
-    columns: { leadSource: lsCol, date: dateCol, ticketType: typeCol, name: nameCol, email: emailCol, phone: phoneCol },
-    updated: new Date().toISOString()
-  });
+  return { total: total, vip: vip, std: std, ql: ql, thai: thai, weekly: weekly };
 }
 
 function findHeaderRow(data) {
@@ -1212,10 +1220,6 @@ function findCol(headers, names) {
     }
   }
   return -1;
-}
-
-function hasValue(row, col) {
-  return col &gt;= 0 &amp;&amp; String(row[col] || &#x27;&#x27;).trim() !== &#x27;&#x27;;
 }
 
 function parseDate(value) {
@@ -3810,6 +3814,7 @@ async function doSync(ev, url, showInModal){
     ev.vipPct = parsed.vipPct || ev.vipPct;
     if(parsed.weeklyArr.length){ ev.regWeekly = parsed.weeklyArr; ev.regWeeks = parsed.weeklyLabels; }
     if(parsed.thaiPct>0 && ev.isBKK) ev.thaiPct = parsed.thaiPct;
+    if(parsed.target!=null) ev.regTarget = parsed.target;
     ev.lastImport = new Date().toLocaleString();
     ev.status = parsed.total<80?'alert':parsed.total<200?'warn':'ok';
 
@@ -3832,6 +3837,9 @@ async function doSync(ev, url, showInModal){
       buildSyncTabs();
     }
     showToast(`🔄 ${ev.code} synced · ${parsed.total} registered`);
+    if(parsed.mismatch){
+      showToast(`⚠ ${ev.code}: Dashboard total (${parsed.total}) differs from row-scan (${parsed.checkTotal}) — check the sheet for a status/category typo`);
+    }
     updateSyncBtn();
 
   } catch(err){
@@ -3908,6 +3916,10 @@ function convertAppsScriptResponse(json, ev){
     thaiPct:     json.thaiPct || 0,
     weeklyArr:   sortedWks.map(k => weekly[k]),
     weeklyLabels:sortedWks,
+    target:      json.target  ?? null,
+    source:      json.source  || 'fulllist-fallback',
+    checkTotal:  json.checkTotal,
+    mismatch:    !!json.mismatch,
   };
 }
 
