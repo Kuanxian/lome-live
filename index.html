@@ -1078,10 +1078,13 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
           <button class="btn" style="font-size:10px;padding:3px 9px;flex-shrink:0;" onclick="copyAppsScript()">📋 Copy script</button>
         </div>
         <pre id="apps-script-code" style="background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 12px;font-family:var(--mono);font-size:10px;color:var(--text3);line-height:1.6;max-height:130px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;margin:0;">function doGet(e) {
-  // LOME Sync Script v3 — reads the sheet&#x27;s own Dashboard totals (SUMIFS-based,
-  // ticket-quantity aware) instead of re-deriving counts from raw rows.
-  // Works across SG/BKK/JB/KL/future Master Registration Lists (all duplicated
-  // from the same template, so Dashboard cell positions stay fixed).
+  // LOME Sync Script v4 — counts registrations directly from Full List (Ticket
+  // Quantity summed, filtered by Ticket Category + status columns — same rigor
+  // as the Dashboard&#x27;s own SUMIFS formulas) rather than trusting the Dashboard
+  // tab&#x27;s cached subtotal cells, which inherit a template typo (VIP-Complimentary
+  // formula filters for &#x27;&#x27;Complementary&#x27;&#x27; and never matches real &#x27;&#x27;Complimentary&#x27;&#x27;
+  // rows). We don&#x27;t touch the shared template — this sidesteps the bug entirely.
+  // Dashboard is only read for the manually-set Target and as a cross-check.
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheets = ss.getSheets();
 
@@ -1091,11 +1094,10 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
   var listResult = readFullList(listTab);
   var dash = dashTab ? readDashboard(dashTab) : null;
 
-  var useDash = !!(dash &amp;&amp; dash.total &gt; 0);
-  var total = useDash ? dash.total : listResult.total;
-  var vip   = useDash ? dash.vip   : listResult.vip;
-  var std   = useDash ? dash.std   : listResult.std;
-  var ql    = useDash ? dash.ql    : listResult.ql;
+  var total = listResult.total;
+  var vip   = listResult.vip;
+  var std   = listResult.std;
+  var ql    = listResult.ql;
 
   return outputJson({
     total: total,
@@ -1106,9 +1108,9 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
     thaiPct: listResult.total &gt; 0 ? Math.round((listResult.thai / listResult.total) * 100) : 0,
     target: dash ? dash.target : null,
     weekly: listResult.weekly,
-    source: useDash ? &#x27;dashboard&#x27; : &#x27;fulllist-fallback&#x27;,
-    checkTotal: listResult.total,
-    mismatch: useDash ? (total !== listResult.total) : false,
+    source: &#x27;fulllist&#x27;,
+    dashboardTotal: dash ? dash.total : null,
+    mismatch: !!(dash &amp;&amp; dash.total &gt; 0 &amp;&amp; dash.total !== total),
     sheet: listTab.getName(),
     updated: new Date().toISOString()
   });
@@ -3838,7 +3840,7 @@ async function doSync(ev, url, showInModal){
     }
     showToast(`🔄 ${ev.code} synced · ${parsed.total} registered`);
     if(parsed.mismatch){
-      showToast(`⚠ ${ev.code}: Dashboard total (${parsed.total}) differs from row-scan (${parsed.checkTotal}) — check the sheet for a status/category typo`);
+      showToast(`⚠ ${ev.code}: LOME count (${parsed.total}) differs from sheet Dashboard total (${parsed.dashboardTotal}) — check for an unrecognized ticket status/category on the sheet`);
     }
     updateSyncBtn();
 
@@ -3917,8 +3919,8 @@ function convertAppsScriptResponse(json, ev){
     weeklyArr:   sortedWks.map(k => weekly[k]),
     weeklyLabels:sortedWks,
     target:      json.target  ?? null,
-    source:      json.source  || 'fulllist-fallback',
-    checkTotal:  json.checkTotal,
+    source:      json.source  || 'fulllist',
+    dashboardTotal: json.dashboardTotal,
     mismatch:    !!json.mismatch,
   };
 }
