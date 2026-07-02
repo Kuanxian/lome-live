@@ -1472,7 +1472,7 @@ function computeForecasts(){
     if(weekly.length>=2){
       const recent=weekly.slice(-3);
       const avgVelocity=recent.reduce((a,b)=>a+b,0)/recent.length;
-      const weeksLeft=Math.max(0,ev.days/7-1);
+      const weeksLeft=Math.max(0,ev.days/7);
       ev.forecast=Math.round(ev.reg+avgVelocity*weeksLeft);
     } else {
       ev.forecast=Math.round((ev.reg||0)*1.15);
@@ -1809,7 +1809,7 @@ function forecastBand(ev, country, sr){
   const recent=weekly.slice(-3);
   const avgRecent=recent.length?recent.reduce((a,b)=>a+b,0)/recent.length:0;
   const avgAll=weekly.length?weekly.reduce((a,b)=>a+b,0)/weekly.length:0;
-  const weeksLeft=Math.max(0,ev.days/7-1);
+  const weeksLeft=Math.max(0,ev.days/7);
   const baseVelocity=avgRecent || avgAll || Math.max(1,current/8);
   const previous=weekly.length>=2?weekly[weekly.length-2]:0;
   const last=weekly.length?weekly[weekly.length-1]:0;
@@ -2012,7 +2012,7 @@ function buildVelocityChart(ev){
   const avgRecent=Math.round(weeks.reduce((a,b)=>a+b,0)/Math.max(1,weeks.length));
 
   // Keep prediction visible, but limit forward bars so it does not crowd the last-5-week view.
-  const weeksLeft=Math.max(0,Math.round(ev.days/7)-1);
+  const weeksLeft=Math.max(0,Math.round(ev.days/7));
   const fcWeeks=Array.from({length:Math.min(weeksLeft,3)},(_,i)=>Math.max(1,Math.round(avgRecent*(1-i*0.08))));
   const fcLabels=Array.from({length:fcWeeks.length},(_,i)=>`Next ${i+1}`);
   const allMax=Math.max(...weeks,...fcWeeks,1);
@@ -2745,7 +2745,7 @@ function processFile(file){
         <div class="pv-s"><div class="pv-l">QL Buyers</div><div class="pv-v" style="color:var(--purple)">${ql}</div></div>`;
       const avgVel=weeklyArr.length?Math.round(weeklyArr.slice(-3).reduce((a,b)=>a+b,0)/Math.min(3,weeklyArr.length)):0;
       const sr=getShowRate();
-      const weeksLeft=Math.max(0,importTarget.days/7-1);
+      const weeksLeft=Math.max(0,importTarget.days/7);
       const projFinal=Math.round(total+avgVel*weeksLeft);
       const projShow=Math.round(projFinal*sr);
       document.getElementById('preview-detail').innerHTML=
