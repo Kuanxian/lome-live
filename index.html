@@ -4422,11 +4422,11 @@ function renderLogisticsPlanHtml(plan){
   const unassignedSection = unassigned.length ? `
     <div class="sec-head">Needs a vendor assigned</div>
     <div style="background:rgba(217,119,6,.06);border:1px solid rgba(217,119,6,.25);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:16px;">
-      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">These items need ordering but have no vendor assigned yet. Pick one from your list in <a href="#" onclick="closeLogisticsPlanModal();switchStockMode('admin');openVendorModal();return false;" style="color:var(--accent)">Manage Vendors</a>, then assign it per item in <a href="#" onclick="closeLogisticsPlanModal();switchStockMode('admin');return false;" style="color:var(--accent)">Admin Stock Input</a> — the Preferred Vendor dropdown there only lists vendors you've added.</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">These items need ordering but have no vendor assigned yet. Pick one below — the dropdown only lists vendors from your <a href="#" onclick="closeLogisticsPlanModal();switchStockMode('admin');openVendorModal();return false;" style="color:var(--accent)">Manage Vendors</a> list. Don't see the right vendor? Add them there first.</div>
       <div class="stock-table-wrap">
         <table class="stock-table" style="min-width:0;">
-          <thead><tr><th>Code</th><th>Material</th><th style="text-align:center">Qty</th></tr></thead>
-          <tbody>${unassigned.map(r=>`<tr><td><span class="code-tag">${r.item.code}</span></td><td>${escapeHTML(r.item.item)}</td><td style="text-align:center"><span class="mono-num">${r.shortfall}</span></td></tr>`).join('')}</tbody>
+          <thead><tr><th>Code</th><th>Material</th><th style="text-align:center">Qty</th><th style="width:170px">Assign vendor</th></tr></thead>
+          <tbody>${unassigned.map(r=>`<tr><td><span class="code-tag">${r.item.code}</span></td><td>${escapeHTML(r.item.item)}</td><td style="text-align:center"><span class="mono-num">${r.shortfall}</span></td><td>${vendorSelectHtml(r.item.code, '', 'setItemVendorAndRefreshPlan')}</td></tr>`).join('')}</tbody>
         </table>
       </div>
     </div>` : '';
@@ -4608,13 +4608,18 @@ function renderStockAdminTable(){
     return `<tr><td><span class="code-tag">${it.code}</span></td><td><div class="item-name">${escapeHTML(it.item)}</div><div class="item-spec">${escapeHTML(it.spec||'')}</div></td><td style="text-align:center">${it.reusable?'<span class="reusable-tag">♻ Reusable</span>':'<span class="consumable-tag">📦 Consumable</span>'}</td><td style="text-align:center"><input class="stock-admin-input" type="number" min="0" value="${phys}" onchange="setWarehouseStock('${it.code}','${wh}',+this.value)"></td><td style="text-align:center"><span class="mono-num" style="color:var(--amber)">${res||'—'}</span></td><td style="text-align:center"><span class="mono-num" style="color:${avail>0?'var(--green)':'var(--text3)'}">${avail||'—'}</span></td><td><input class="stock-note-input" type="date" value="${inv.lastChecked||''}" onchange="setStockAdminField('${it.code}','lastChecked',this.value)"></td><td><input class="stock-note-input" type="text" placeholder="Notes…" value="${escapeHTML(inv.adminNotes||'')}" oninput="setStockAdminField('${it.code}','adminNotes',this.value)"></td><td>${vendorSelectHtml(it.code, inv.vendor||'')}</td></tr>`;
   }).join('') || `<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:28px">No items match.</td></tr>`;
 }
-function vendorSelectHtml(code, selected){
+function vendorSelectHtml(code, selected, onChangeFn){
+  onChangeFn = onChangeFn || 'setItemVendor';
   const names=PREFERRED_VENDORS.map(v=>v.name);
   if(selected && !names.includes(selected)) names.push(selected);
   const opts=['<option value="">— None —</option>'].concat(
     names.map(v=>`<option value="${escapeHTML(v)}" ${v===selected?'selected':''}>${escapeHTML(v)}</option>`)
   );
-  return `<select class="stock-note-input" style="min-width:150px" onchange="setItemVendor('${code}',this.value)">${opts.join('')}</select>`;
+  return `<select class="stock-note-input" style="min-width:150px" onchange="${onChangeFn}('${code}',this.value)">${opts.join('')}</select>`;
+}
+function setItemVendorAndRefreshPlan(code, val){
+  setItemVendor(code, val);
+  if(logisticsEv) openLogisticsPlanModal(logisticsEv);
 }
 function setItemVendor(code, val){
   ensureWarehouseStock();
