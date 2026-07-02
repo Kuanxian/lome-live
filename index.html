@@ -1072,18 +1072,22 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
 
 <!-- ── MANAGE VENDORS MODAL ── -->
 <div class="overlay" id="vendor-modal">
-  <div class="modal" style="width:560px;max-width:94vw;">
+  <div class="modal" style="width:640px;max-width:94vw;">
     <div class="modal-hd">
       <div><div class="modal-title">🏭 Manage Vendors</div><div class="modal-sub">Feeds the Preferred Vendor dropdown and the Logistics Plan's WhatsApp order drafts</div></div>
       <button class="modal-x" onclick="closeVendorModal()">✕</button>
     </div>
-    <div class="modal-bd" style="display:flex;flex-direction:column;gap:12px;">
+    <div class="modal-bd" style="display:flex;flex-direction:column;gap:10px;">
       <div style="display:flex;gap:8px;">
         <input id="new-vendor-input" style="flex:1;padding:8px 11px;font-size:12px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);" placeholder="Vendor name…" onkeydown="if(event.key==='Enter')addPreferredVendor()"/>
         <input id="new-vendor-phone-input" style="width:160px;padding:8px 11px;font-size:12px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-family:var(--mono);" placeholder="Phone e.g. 60123456789" onkeydown="if(event.key==='Enter')addPreferredVendor()"/>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <input id="new-vendor-category-input" list="vendor-category-suggestions" style="flex:1;padding:8px 11px;font-size:12px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);" placeholder="Category — e.g. Printing Services, Shipping &amp; Logistics…" onkeydown="if(event.key==='Enter')addPreferredVendor()"/>
+        <datalist id="vendor-category-suggestions"></datalist>
         <button class="btn primary" onclick="addPreferredVendor()">+ Add</button>
       </div>
-      <div style="font-size:10px;color:var(--text3);">Phone number should include country code, no + or spaces needed (e.g. Malaysia: 60123456789) — used to build WhatsApp order links.</div>
+      <div style="font-size:10px;color:var(--text3);">Phone should include country code, no + or spaces needed (e.g. Malaysia: 60123456789) — used to build WhatsApp order links. Category groups vendors in the Preferred Vendor dropdown — type a new one or reuse an existing one from the suggestions.</div>
       <div id="vendor-list" style="display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto;"></div>
     </div>
     <div class="modal-ft">
@@ -1611,13 +1615,16 @@ ITEMS.forEach(it=>{
 // Seeded from the vendors already used in ITEMS above. Phone numbers are left blank —
 // fill them in via Manage Vendors so LOME can draft WhatsApp orders to them.
 let PREFERRED_VENDORS = [
-  {name:'Kadpo Industry (PG)', phone:''},
-  {name:'Rafflestag Malaysia', phone:''},
-  {name:'Hot Print Media (PG)', phone:''},
+  {name:'Kadpo Industry (PG)', phone:'', category:''},
+  {name:'Rafflestag Malaysia', phone:'', category:''},
+  {name:'Hot Print Media (PG)', phone:'', category:''},
 ];
+// Starting suggestions for the category datalist — not a fixed enum, just
+// examples so the field isn't blank the first time someone categorizes a vendor.
+const VENDOR_CATEGORY_SUGGESTIONS=['Printing Services','Shipping & Logistics','Banners & Bazooka','Stationery','Emergency/Local Supplies'];
 function normalizeVendors(arr){
   if(!Array.isArray(arr)) return null;
-  return arr.map(v=> typeof v==='string' ? {name:v, phone:''} : {name:v?.name||'', phone:v?.phone||''}).filter(v=>v.name);
+  return arr.map(v=> typeof v==='string' ? {name:v, phone:'', category:''} : {name:v?.name||'', phone:v?.phone||'', category:v?.category||''}).filter(v=>v.name);
 }
 function getItemVendor(it){
   const v = inventory[it.code]?.vendor;
@@ -4610,12 +4617,24 @@ function renderStockAdminTable(){
 }
 function vendorSelectHtml(code, selected, onChangeFn){
   onChangeFn = onChangeFn || 'setItemVendor';
-  const names=PREFERRED_VENDORS.map(v=>v.name);
-  if(selected && !names.includes(selected)) names.push(selected);
-  const opts=['<option value="">— None —</option>'].concat(
-    names.map(v=>`<option value="${escapeHTML(v)}" ${v===selected?'selected':''}>${escapeHTML(v)}</option>`)
-  );
-  return `<select class="stock-note-input" style="min-width:150px" onchange="${onChangeFn}('${code}',this.value)">${opts.join('')}</select>`;
+  const opt=v=>`<option value="${escapeHTML(v)}" ${v===selected?'selected':''}>${escapeHTML(v)}</option>`;
+
+  // Group by category (optgroup) so the list stays navigable as it grows —
+  // vendors with no category go first as plain options, then one optgroup per category.
+  const groups={};
+  const uncategorized=[];
+  PREFERRED_VENDORS.forEach(v=>{
+    if(v.category) (groups[v.category]=groups[v.category]||[]).push(v.name);
+    else uncategorized.push(v.name);
+  });
+  if(selected && !PREFERRED_VENDORS.some(v=>v.name===selected)) uncategorized.push(selected);
+
+  let optsHtml='<option value="">— None —</option>' + uncategorized.map(opt).join('');
+  Object.keys(groups).sort().forEach(cat=>{
+    optsHtml += `<optgroup label="${escapeHTML(cat)}">${groups[cat].map(opt).join('')}</optgroup>`;
+  });
+
+  return `<select class="stock-note-input" style="min-width:170px" onchange="${onChangeFn}('${code}',this.value)">${optsHtml}</select>`;
 }
 function setItemVendorAndRefreshPlan(code, val){
   setItemVendor(code, val);
@@ -4633,30 +4652,59 @@ function openVendorModal(){
 function closeVendorModal(){
   document.getElementById('vendor-modal').classList.remove('show');
 }
+function getVendorCategoryOptions(){
+  const used=PREFERRED_VENDORS.map(v=>v.category).filter(Boolean);
+  return Array.from(new Set([...VENDOR_CATEGORY_SUGGESTIONS, ...used])).sort();
+}
+function renderVendorCategoryDatalist(){
+  const dl=document.getElementById('vendor-category-suggestions');
+  if(dl) dl.innerHTML=getVendorCategoryOptions().map(c=>`<option value="${escapeHTML(c)}">`).join('');
+}
 function renderVendorList(){
+  renderVendorCategoryDatalist();
   const wrap=document.getElementById('vendor-list');
-  wrap.innerHTML = PREFERRED_VENDORS.length ? PREFERRED_VENDORS.map((v,i)=>`
+  if(!PREFERRED_VENDORS.length){
+    wrap.innerHTML=`<div style="font-size:12px;color:var(--text3);text-align:center;padding:14px">No vendors yet — add one above.</div>`;
+    return;
+  }
+  // Group by category so the list itself previews how the picker dropdown will be grouped.
+  const groups={};
+  PREFERRED_VENDORS.forEach((v,i)=>{ const c=v.category||'Uncategorized'; (groups[c]=groups[c]||[]).push({...v,idx:i}); });
+  const catNames=Object.keys(groups).sort((a,b)=> a==='Uncategorized'?1:b==='Uncategorized'?-1:a.localeCompare(b));
+  wrap.innerHTML=catNames.map(cat=>`
+    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin:6px 0 2px;">${escapeHTML(cat)}</div>
+    ${groups[cat].map(v=>`
     <div style="display:flex;align-items:center;gap:8px;padding:8px 11px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);">
       <span style="font-size:12px;flex:1;">${escapeHTML(v.name)}</span>
-      <input type="text" value="${escapeHTML(v.phone||'')}" placeholder="Phone for WhatsApp…" style="width:160px;padding:6px 9px;font-size:11px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-family:var(--mono);" onchange="setVendorPhone(${i},this.value)"/>
+      <input type="text" list="vendor-category-suggestions" value="${escapeHTML(v.category||'')}" placeholder="Category…" style="width:150px;padding:6px 9px;font-size:11px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);" onchange="setVendorCategory(${v.idx},this.value)"/>
+      <input type="text" value="${escapeHTML(v.phone||'')}" placeholder="Phone for WhatsApp…" style="width:150px;padding:6px 9px;font-size:11px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-family:var(--mono);" onchange="setVendorPhone(${v.idx},this.value)"/>
       <button class="btn" style="padding:3px 9px;font-size:11px;" onclick="removePreferredVendor('${escapeHTML(v.name).replace(/'/g,"\\'")}')">Remove</button>
-    </div>`).join('') : `<div style="font-size:12px;color:var(--text3);text-align:center;padding:14px">No vendors yet — add one above.</div>`;
+    </div>`).join('')}
+  `).join('');
 }
 function setVendorPhone(idx, val){
   if(!PREFERRED_VENDORS[idx]) return;
   PREFERRED_VENDORS[idx].phone = val.replace(/[^0-9+]/g,'');
   saveVendorsQuiet();
 }
+function setVendorCategory(idx, val){
+  if(!PREFERRED_VENDORS[idx]) return;
+  PREFERRED_VENDORS[idx].category = val.trim();
+  saveVendorsQuiet();
+  renderVendorList();
+}
 function addPreferredVendor(){
   const input=document.getElementById('new-vendor-input');
   const phoneInput=document.getElementById('new-vendor-phone-input');
+  const categoryInput=document.getElementById('new-vendor-category-input');
   const name=(input?.value||'').trim();
   const phone=(phoneInput?.value||'').trim().replace(/[^0-9+]/g,'');
+  const category=(categoryInput?.value||'').trim();
   if(!name) return;
   if(PREFERRED_VENDORS.some(v=>v.name.toLowerCase()===name.toLowerCase())){ showToast('That vendor is already in the list'); return; }
-  PREFERRED_VENDORS.push({name, phone});
+  PREFERRED_VENDORS.push({name, phone, category});
   saveVendorsQuiet();
-  input.value=''; if(phoneInput) phoneInput.value='';
+  input.value=''; if(phoneInput) phoneInput.value=''; if(categoryInput) categoryInput.value='';
   renderVendorList();
   if(stockMode==='admin') renderStockAdminTable();
   showToast(`✓ ${name} added to vendor list`);
