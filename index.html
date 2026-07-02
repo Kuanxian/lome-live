@@ -595,7 +595,7 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
         <div id="stock-user-view" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
           <div style="display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--bg1);flex-shrink:0;flex-wrap:wrap;">
             <span class="plb">Event:</span>
-            <select id="stock-event-select" class="packing-ev-sel" onchange="renderStockUserDashboard()"></select>
+            <select id="stock-event-select" class="packing-ev-sel" onchange="selectEv(this.value)"></select>
             <span id="stock-event-note" style="font-size:11px;color:var(--text3);"></span>
             <div class="tgap"></div>
             <button class="btn" onclick="stockSetFilter('all')" id="stock-filter-all">All</button>
@@ -648,7 +648,7 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
     <div class="page" id="page-packing">
       <div class="packing-toolbar">
         <span class="plb">Event:</span>
-        <select class="packing-ev-sel" id="pack-ev-sel" onchange="renderPackingPlan()">
+        <select class="packing-ev-sel" id="pack-ev-sel" onchange="selectEv(this.value)">
           <option value="SG">MMI-2607-SG · Singapore</option>
           <option value="BKK">MMI-2607-BKK · Bangkok</option>
           <option value="JB">MMI-2607-JB · Johor Bahru</option>
@@ -1748,10 +1748,25 @@ function updateTopbar(){
   document.getElementById('tp-date').textContent=curEv.date;
 }
 
+// Single source of truth for "which event am I looking at" — the sidebar,
+// the Forecast tabs, Stock Management's event dropdown and Packing &
+// Dispatch's event dropdown all funnel through here, so switching the event
+// from any one of them keeps the rest of the app in sync instead of each
+// page tracking its own independent selection.
 function selectEv(id){
-  curEv=EVENTS.find(e=>e.id===id);
+  const ev=EVENTS.find(e=>e.id===id);
+  if(!ev) return;
+  curEv=ev;
+  syncEventSelectorsTo(id);
   buildSidebar();updateTopbar();
-  renderOverview();renderForecast();
+  renderOverview();renderForecast();renderInventory();renderPackingPlan();
+}
+
+function syncEventSelectorsTo(id){
+  ['stock-event-select','pack-ev-sel','oc-ev-sel','ask-event','v-event','m-event','d-event','pf-event'].forEach(selId=>{
+    const sel=document.getElementById(selId);
+    if(sel && Array.from(sel.options).some(o=>o.value===id)) sel.value=id;
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1804,18 +1819,9 @@ function renderOverview(){
 // ═══════════════════════════════════════════════════════════════
 // FORECAST PAGE
 // ═══════════════════════════════════════════════════════════════
-let fcEv=EVENTS[0];
-
 function renderForecastTabs(){
   document.getElementById('fc-ev-tabs').innerHTML=EVENTS.map(ev=>`
-    <div class="fc-ev-tab ${ev.id===fcEv.id?'on':''}" onclick="setFcEv('${ev.id}',this)">${ev.code} · ${ev.city}</div>`).join('');
-}
-
-function setFcEv(id,el){
-  fcEv=EVENTS.find(e=>e.id===id);
-  document.querySelectorAll('.fc-ev-tab').forEach(t=>t.classList.remove('on'));
-  el.classList.add('on');
-  renderForecast();
+    <div class="fc-ev-tab ${ev.id===curEv.id?'on':''}" onclick="selectEv('${ev.id}')">${ev.code} · ${ev.city}</div>`).join('');
 }
 
 
@@ -1913,7 +1919,7 @@ function scenarioCard(cls,title,finalReg,show,day3,ql,pack,velocityNote){
 
 function renderForecast(){
   renderForecastTabs();
-  const ev=fcEv;
+  const ev=curEv;
   const country=getCountryForecastIntel(ev);
   const sr=getShowRate();
   const band=forecastBand(ev,country,sr);
