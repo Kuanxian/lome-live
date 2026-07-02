@@ -4734,7 +4734,7 @@ function renderVendorList(){
     ${groups[cat].map(v=>`
     <div style="display:flex;flex-direction:column;gap:6px;padding:8px 11px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);">
       <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:12px;font-weight:600;flex:1;">${escapeHTML(v.name)}</span>
+        <input type="text" value="${escapeHTML(v.name)}" style="flex:1;padding:5px 8px;font-size:12px;font-weight:600;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);" onchange="renameVendor(${v.idx},this.value)"/>
         <button class="btn" style="padding:3px 9px;font-size:11px;" onclick="removePreferredVendor('${escapeHTML(v.name).replace(/'/g,"\\'")}')">Remove</button>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -4764,6 +4764,34 @@ function setVendorField(idx, field, val){
   PREFERRED_VENDORS[idx][field] = val.trim();
   saveVendorsQuiet();
   if(field==='category') renderVendorList();
+}
+// Vendor identity is the name string, used as the join key wherever an item
+// is assigned to a vendor (inventory[code].vendor). Renaming in place — not
+// remove-and-re-add — means every item already assigned to this vendor needs
+// its stored vendor string updated too, or the rename would silently orphan
+// those assignments back into "Needs a vendor assigned".
+function renameVendor(idx, newName){
+  const v=PREFERRED_VENDORS[idx];
+  if(!v) return;
+  newName=newName.trim();
+  if(!newName){ renderVendorList(); return; }
+  const oldName=v.name;
+  if(newName===oldName) return;
+  if(PREFERRED_VENDORS.some((other,i)=>i!==idx && other.name.toLowerCase()===newName.toLowerCase())){
+    showToast('Another vendor already has that name');
+    renderVendorList();
+    return;
+  }
+  v.name=newName;
+  let relinked=0;
+  ITEMS.forEach(it=>{
+    if(inventory[it.code]?.vendor===oldName){ inventory[it.code].vendor=newName; relinked++; }
+  });
+  saveVendorsQuiet();
+  if(relinked) saveInventoryQuiet();
+  renderVendorList();
+  if(stockMode==='admin') renderStockAdminTable();
+  showToast(`✓ Renamed to ${newName}${relinked?` · ${relinked} item(s) re-linked`:''}`);
 }
 function addPreferredVendor(){
   const input=document.getElementById('new-vendor-input');
