@@ -1621,7 +1621,7 @@ function normalizeVendors(arr){
 }
 function getItemVendor(it){
   const v = inventory[it.code]?.vendor;
-  return (v && v.trim()) ? v : (it.vendor || '—');
+  return (v && v.trim()) ? v : '—';
 }
 function getVendorPhone(name){
   return PREFERRED_VENDORS.find(v=>v.name===name)?.phone || '';
@@ -4323,9 +4323,11 @@ function generateLogisticsPlan(ev){
   const transfer=rows.filter(r=>r.actionType==='transfer');
   const local=rows.filter(r=>r.actionType==='local');
   const orderRows=rows.filter(r=>r.actionType==='order');
+  const unassigned=orderRows.filter(r=>getItemVendor(r.item)==='—');
+  const assignedOrderRows=orderRows.filter(r=>getItemVendor(r.item)!=='—');
 
   const byVendor={};
-  orderRows.forEach(r=>{
+  assignedOrderRows.forEach(r=>{
     const vendor=getItemVendor(r.item);
     (byVendor[vendor]=byVendor[vendor]||[]).push(r);
   });
@@ -4341,7 +4343,7 @@ function generateLogisticsPlan(ev){
     };
   });
 
-  return {ev, rows, ready, transfer, local, orderRows, vendorGroups};
+  return {ev, rows, ready, transfer, local, orderRows, vendorGroups, unassigned};
 }
 
 function buildVendorOrderMessage(vendorName, items, ev){
@@ -4382,7 +4384,7 @@ function closeLogisticsPlanModal(){
   document.getElementById('logistics-modal').classList.remove('show');
 }
 function renderLogisticsPlanHtml(plan){
-  const {ready, transfer, local, orderRows, vendorGroups}=plan;
+  const {ready, transfer, local, orderRows, vendorGroups, unassigned}=plan;
   const wh=getEventWarehouse(plan.ev);
 
   const summary=`
@@ -4390,13 +4392,13 @@ function renderLogisticsPlanHtml(plan){
       <div class="stock-card green"><div class="stock-label">Ready</div><div class="stock-big" style="color:var(--green)">${ready.length}</div><div class="stock-sub">Already covered by ${getWarehouseName(wh)}.</div></div>
       <div class="stock-card amber"><div class="stock-label">Transfer</div><div class="stock-big" style="color:var(--amber)">${transfer.length}</div><div class="stock-sub">Can be solved from another warehouse.</div></div>
       <div class="stock-card teal"><div class="stock-label">Buy Local</div><div class="stock-big" style="color:var(--teal)">${local.length}</div><div class="stock-sub">Cheaper/faster bought on the ground.</div></div>
-      <div class="stock-card purple"><div class="stock-label">Vendor Orders</div><div class="stock-big" style="color:var(--purple)">${orderRows.length}</div><div class="stock-sub">${vendorGroups.length} vendor${vendorGroups.length===1?'':'s'} to contact.</div></div>
+      <div class="stock-card purple"><div class="stock-label">Vendor Orders</div><div class="stock-big" style="color:var(--purple)">${orderRows.length}</div><div class="stock-sub">${vendorGroups.length} vendor${vendorGroups.length===1?'':'s'} to contact${unassigned.length?` · ${unassigned.length} unassigned`:''}.</div></div>
     </div>`;
 
   const transferSection = transfer.length ? `
     <div class="sec-head">Transfer between warehouses</div>
     <div class="stock-table-wrap" style="margin-bottom:16px;">
-      <table class="stock-table">
+      <table class="stock-table" style="min-width:0;">
         <thead><tr><th>Code</th><th>Material</th><th style="text-align:center">Qty</th><th>From</th></tr></thead>
         <tbody>${transfer.map(r=>`<tr><td><span class="code-tag">${r.item.code}</span></td><td>${escapeHTML(r.item.item)}</td><td style="text-align:center"><span class="mono-num">${r.shortfall}</span></td><td>${escapeHTML(r.other?.name||'—')}</td></tr>`).join('')}</tbody>
       </table>
@@ -4405,10 +4407,22 @@ function renderLogisticsPlanHtml(plan){
   const localSection = local.length ? `
     <div class="sec-head">Buy locally</div>
     <div class="stock-table-wrap" style="margin-bottom:16px;">
-      <table class="stock-table">
+      <table class="stock-table" style="min-width:0;">
         <thead><tr><th>Code</th><th>Material</th><th style="text-align:center">Qty</th></tr></thead>
         <tbody>${local.map(r=>`<tr><td><span class="code-tag">${r.item.code}</span></td><td>${escapeHTML(r.item.item)}</td><td style="text-align:center"><span class="mono-num">${r.shortfall}</span></td></tr>`).join('')}</tbody>
       </table>
+    </div>` : '';
+
+  const unassignedSection = unassigned.length ? `
+    <div class="sec-head">Needs a vendor assigned</div>
+    <div style="background:rgba(217,119,6,.06);border:1px solid rgba(217,119,6,.25);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:16px;">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">These items need ordering but have no vendor assigned yet. Pick one from your list in <a href="#" onclick="closeLogisticsPlanModal();switchStockMode('admin');openVendorModal();return false;" style="color:var(--accent)">Manage Vendors</a>, then assign it per item in <a href="#" onclick="closeLogisticsPlanModal();switchStockMode('admin');return false;" style="color:var(--accent)">Admin Stock Input</a> — the Preferred Vendor dropdown there only lists vendors you've added.</div>
+      <div class="stock-table-wrap">
+        <table class="stock-table" style="min-width:0;">
+          <thead><tr><th>Code</th><th>Material</th><th style="text-align:center">Qty</th></tr></thead>
+          <tbody>${unassigned.map(r=>`<tr><td><span class="code-tag">${r.item.code}</span></td><td>${escapeHTML(r.item.item)}</td><td style="text-align:center"><span class="mono-num">${r.shortfall}</span></td></tr>`).join('')}</tbody>
+        </table>
+      </div>
     </div>` : '';
 
   const vendorSection = vendorGroups.length ? `
@@ -4431,9 +4445,9 @@ function renderLogisticsPlanHtml(plan){
           <pre id="lp-msg-${slug(g.vendor)}" style="padding:11px 14px;font-size:11.5px;white-space:pre-wrap;font-family:var(--font);color:var(--text2);line-height:1.7;margin:0;">${escapeHTML(g.message)}</pre>
         </div>`;
       }).join('')}
-    </div>` : `<div class="sec-head">Vendor orders</div><div style="font-size:12px;color:var(--text3);padding:10px 0;">Nothing to order — all covered by stock, transfer or local buy.</div>`;
+    </div>` : (unassigned.length ? '' : `<div class="sec-head">Vendor orders</div><div style="font-size:12px;color:var(--text3);padding:10px 0;">Nothing to order — all covered by stock, transfer or local buy.</div>`);
 
-  return summary + transferSection + localSection + vendorSection;
+  return summary + transferSection + localSection + unassignedSection + vendorSection;
 }
 function exportLogisticsPlan(){
   if(!logisticsEv) return;
