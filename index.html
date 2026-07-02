@@ -601,6 +601,7 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
             <button class="btn" onclick="stockSetFilter('all')" id="stock-filter-all">All</button>
             <button class="btn" onclick="stockSetFilter('critical')" id="stock-filter-critical">Critical</button>
             <button class="btn" onclick="stockSetFilter('action')" id="stock-filter-action">Need Action</button>
+            <button class="btn primary" onclick="openLogisticsPlanForCurrentEvent()">📋 Auto Logistics Plan</button>
             <button class="btn teal" onclick="exportStockReadiness()">⬇ Export event stock plan</button>
           </div>
 
@@ -980,10 +981,28 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
         <div class="preview-detail" id="preview-detail"></div>
         <div class="preview-log" id="preview-log"></div>
       </div>
+      <div class="preview-box" id="forecast-approval-box">
+        <div class="preview-title">🎯 Approve show-up forecast</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:12px;" id="fa-registered-note"></div>
+        <div style="display:flex;align-items:flex-end;gap:16px;margin-bottom:10px;flex-wrap:wrap;">
+          <div>
+            <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;">Predicted show-up (editable)</div>
+            <input type="number" id="fa-showup-input" style="width:130px;padding:8px 11px;font-size:17px;font-weight:700;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--accent);"/>
+          </div>
+          <div style="font-size:11px;color:var(--text3);line-height:1.7;" id="fa-band-note"></div>
+        </div>
+        <div style="background:var(--accent-bg);border:1px solid rgba(79,142,247,0.2);border-radius:var(--radius);padding:9px 12px;font-size:11px;color:var(--text2);">
+          💡 This number drives the logistics plan — the full printing list and vendor order quantities LOME is about to calculate. Adjust it if you know something the model doesn't, then approve.
+        </div>
+      </div>
     </div>
-    <div class="modal-ft">
+    <div class="modal-ft" id="import-ft-default">
       <button class="btn" onclick="closeModal()">Cancel</button>
       <button class="btn primary" id="apply-btn" onclick="applyImport()" disabled style="opacity:.4;cursor:not-allowed">Apply to LOME</button>
+    </div>
+    <div class="modal-ft" id="import-ft-approval" style="display:none;">
+      <button class="btn" onclick="skipForecastApproval()">Skip for now</button>
+      <button class="btn primary" onclick="approveForecastAndPlan()">✓ Approve &amp; generate logistics plan</button>
     </div>
   </div>
 </div>
@@ -1053,20 +1072,37 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
 
 <!-- ── MANAGE VENDORS MODAL ── -->
 <div class="overlay" id="vendor-modal">
-  <div class="modal" style="width:440px;max-width:94vw;">
+  <div class="modal" style="width:560px;max-width:94vw;">
     <div class="modal-hd">
-      <div><div class="modal-title">🏭 Manage Vendors</div><div class="modal-sub">This list feeds the Preferred Vendor dropdown in Admin Stock Input</div></div>
+      <div><div class="modal-title">🏭 Manage Vendors</div><div class="modal-sub">Feeds the Preferred Vendor dropdown and the Logistics Plan's WhatsApp order drafts</div></div>
       <button class="modal-x" onclick="closeVendorModal()">✕</button>
     </div>
     <div class="modal-bd" style="display:flex;flex-direction:column;gap:12px;">
       <div style="display:flex;gap:8px;">
         <input id="new-vendor-input" style="flex:1;padding:8px 11px;font-size:12px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);" placeholder="Vendor name…" onkeydown="if(event.key==='Enter')addPreferredVendor()"/>
+        <input id="new-vendor-phone-input" style="width:160px;padding:8px 11px;font-size:12px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-family:var(--mono);" placeholder="Phone e.g. 60123456789" onkeydown="if(event.key==='Enter')addPreferredVendor()"/>
         <button class="btn primary" onclick="addPreferredVendor()">+ Add</button>
       </div>
+      <div style="font-size:10px;color:var(--text3);">Phone number should include country code, no + or spaces needed (e.g. Malaysia: 60123456789) — used to build WhatsApp order links.</div>
       <div id="vendor-list" style="display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto;"></div>
     </div>
     <div class="modal-ft">
       <button class="btn" onclick="closeVendorModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── AUTO LOGISTICS PLAN MODAL ── -->
+<div class="overlay" id="logistics-modal">
+  <div class="modal" style="width:760px;max-width:96vw;">
+    <div class="modal-hd">
+      <div><div class="modal-title">📋 Auto Logistics Plan</div><div class="modal-sub" id="lp-subtitle"></div></div>
+      <button class="modal-x" onclick="closeLogisticsPlanModal()">✕</button>
+    </div>
+    <div class="modal-bd" style="overflow-y:auto;max-height:72vh;" id="lp-body"></div>
+    <div class="modal-ft">
+      <button class="btn" onclick="closeLogisticsPlanModal()">Close</button>
+      <button class="btn teal" onclick="exportLogisticsPlan()">⬇ Export plan</button>
     </div>
   </div>
 </div>
@@ -1350,7 +1386,7 @@ function initFirebaseLiveSync(){
         try{ localStorage.setItem('lome_sync', JSON.stringify(syncConfig)); }catch(e){}
       }
       if(Array.isArray(data.vendors)){
-        PREFERRED_VENDORS = data.vendors;
+        PREFERRED_VENDORS = normalizeVendors(data.vendors) || PREFERRED_VENDORS;
         try{ localStorage.setItem('lome_vendors', JSON.stringify(PREFERRED_VENDORS)); }catch(e){}
       }
       refreshAllSharedViews();
@@ -1572,11 +1608,23 @@ ITEMS.forEach(it=>{
 });
 
 // Preferred vendor list — shared across all staff, editable via the Manage Vendors modal.
-// Seeded from the vendors already used in ITEMS above.
-let PREFERRED_VENDORS = ['Kadpo Industry (PG)', 'Rafflestag Malaysia', 'Hot Print Media (PG)'];
+// Seeded from the vendors already used in ITEMS above. Phone numbers are left blank —
+// fill them in via Manage Vendors so LOME can draft WhatsApp orders to them.
+let PREFERRED_VENDORS = [
+  {name:'Kadpo Industry (PG)', phone:''},
+  {name:'Rafflestag Malaysia', phone:''},
+  {name:'Hot Print Media (PG)', phone:''},
+];
+function normalizeVendors(arr){
+  if(!Array.isArray(arr)) return null;
+  return arr.map(v=> typeof v==='string' ? {name:v, phone:''} : {name:v?.name||'', phone:v?.phone||''}).filter(v=>v.name);
+}
 function getItemVendor(it){
   const v = inventory[it.code]?.vendor;
   return (v && v.trim()) ? v : (it.vendor || '—');
+}
+function getVendorPhone(name){
+  return PREFERRED_VENDORS.find(v=>v.name===name)?.phone || '';
 }
 
 let invFilter='all';
@@ -2417,7 +2465,7 @@ function saveVendorsQuiet(){
 function loadVendorsFromLocal(){
   try{
     const raw=localStorage.getItem('lome_vendors');
-    if(raw){ const arr=JSON.parse(raw); if(Array.isArray(arr)) PREFERRED_VENDORS=arr; }
+    if(raw){ const norm=normalizeVendors(JSON.parse(raw)); if(norm) PREFERRED_VENDORS=norm; }
   }catch(e){ console.error('loadVendorsFromLocal:', e); }
 }
 
@@ -2692,6 +2740,7 @@ function setImportEv(id,el){
 function resetPreview(){
   document.getElementById('preview-box').classList.remove('show');
   const ab=document.getElementById('apply-btn');ab.disabled=true;ab.style.opacity='.4';ab.style.cursor='not-allowed';
+  resetImportModalView();
 }
 
 function processFile(file){
@@ -2769,11 +2818,50 @@ function applyImport(){
   ev.lastImport=new Date().toLocaleString();
   ev.status=importData.total<80?'alert':importData.total<200?'warn':'ok';
   computeForecasts();recalcAllocations();
-  closeModal();
   buildSidebar();updateTopbar();
-  renderOverview();renderForecast();renderInventory();renderOrderCalc();
+  renderOverview();renderForecast();renderInventory();
   saveSharedStateQuiet();
   showToast(`${ev.code} updated · ${importData.total} registered · ~${ev.showUp} show-up forecast`);
+  showForecastApproval(ev);
+}
+
+function showForecastApproval(ev){
+  document.getElementById('drop-zone').style.display='none';
+  document.getElementById('preview-box').classList.remove('show');
+  document.getElementById('forecast-approval-box').classList.add('show');
+  document.getElementById('import-ft-default').style.display='none';
+  document.getElementById('import-ft-approval').style.display='flex';
+
+  const country=getCountryForecastIntel(ev);
+  const sr=getShowRate();
+  const band=forecastBand(ev,country,sr);
+  document.getElementById('fa-showup-input').value=ev.showUp||band.baseShow||0;
+  document.getElementById('fa-band-note').innerHTML=`Range across scenarios: <b>${fmtNum(band.lowShow)}–${fmtNum(band.highShow)}</b> pax (Conservative–Stretch)<br>Base show rate: ${Math.round(band.baseShowRate*100)}%`;
+  document.getElementById('fa-registered-note').textContent=`${ev.code} · ${ev.city} · ${fmtNum(ev.reg)} total registered`;
+}
+
+function resetImportModalView(){
+  document.getElementById('drop-zone').style.display='';
+  document.getElementById('forecast-approval-box').classList.remove('show');
+  document.getElementById('import-ft-default').style.display='';
+  document.getElementById('import-ft-approval').style.display='none';
+}
+
+function skipForecastApproval(){
+  closeModal();
+  resetImportModalView();
+}
+
+function approveForecastAndPlan(){
+  const ev=importTarget;
+  const override=parseInt(document.getElementById('fa-showup-input')?.value,10);
+  if(!isNaN(override) && override>=0){
+    ev.showUp=override;
+    saveSharedStateQuiet();
+  }
+  closeModal();
+  resetImportModalView();
+  openLogisticsPlanModal(ev);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -4223,6 +4311,139 @@ function getEventStockRows(ev){
     return {item:it, wh, need, local, shortfall, other, crit, lead, action, actionType, actionText, urgent};
   });
 }
+
+// ═══════════════════════════════════════════════════════════════
+// AUTO LOGISTICS PLAN — full printing/order list from show-up forecast,
+// grouped into ready/transfer/buy-local/order, with vendor orders grouped
+// per vendor and a ready-to-send WhatsApp draft for each.
+// ═══════════════════════════════════════════════════════════════
+function generateLogisticsPlan(ev){
+  const rows=getEventStockRows(ev);
+  const ready=rows.filter(r=>r.actionType==='ready' && r.need>0);
+  const transfer=rows.filter(r=>r.actionType==='transfer');
+  const local=rows.filter(r=>r.actionType==='local');
+  const orderRows=rows.filter(r=>r.actionType==='order');
+
+  const byVendor={};
+  orderRows.forEach(r=>{
+    const vendor=getItemVendor(r.item);
+    (byVendor[vendor]=byVendor[vendor]||[]).push(r);
+  });
+
+  const vendorGroups=Object.keys(byVendor).sort().map(vendor=>{
+    const items=byVendor[vendor];
+    const phone=getVendorPhone(vendor);
+    return {
+      vendor, phone,
+      items,
+      urgent: items.some(r=>r.urgent),
+      message: buildVendorOrderMessage(vendor, items, ev),
+    };
+  });
+
+  return {ev, rows, ready, transfer, local, orderRows, vendorGroups};
+}
+
+function buildVendorOrderMessage(vendorName, items, ev){
+  const startDate=parseEventStartDate(ev.date);
+  const minLead=Math.min(...items.map(r=>r.lead));
+  let orderByStr='as soon as possible';
+  if(startDate){
+    const orderBy=new Date(startDate);
+    orderBy.setDate(orderBy.getDate()-minLead);
+    orderByStr=orderBy.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  }
+  const lines=items.map(r=>`• ${r.item.code} ${r.item.item} — Qty: *${r.shortfall}*${r.item.spec?` (${r.item.spec})`:''}`).join('\n');
+  return `Hi ${vendorName}, this is the Logistics team at Success Resources.
+
+For *${ev.code} — ${ev.city}* (${ev.date}), we need to order:
+
+${lines}
+
+Could you please confirm:
+1. Availability and lead time
+2. Price
+3. Earliest delivery/pickup date
+
+We'd need to place this order by *${orderByStr}* to avoid delays for the event. Thank you!`;
+}
+
+function slug(s){ return String(s).replace(/[^a-zA-Z0-9]+/g,'-').toLowerCase(); }
+
+let logisticsEv=null;
+function openLogisticsPlanModal(ev){
+  logisticsEv=ev;
+  const plan=generateLogisticsPlan(ev);
+  document.getElementById('lp-subtitle').textContent=`${ev.code} · ${ev.city} · ${ev.date} · Predicted show-up: ${fmtNum(ev.showUp||0)} pax`;
+  document.getElementById('lp-body').innerHTML=renderLogisticsPlanHtml(plan);
+  document.getElementById('logistics-modal').classList.add('show');
+}
+function closeLogisticsPlanModal(){
+  document.getElementById('logistics-modal').classList.remove('show');
+}
+function renderLogisticsPlanHtml(plan){
+  const {ready, transfer, local, orderRows, vendorGroups}=plan;
+  const wh=getEventWarehouse(plan.ev);
+
+  const summary=`
+    <div class="stock-hero" style="margin-bottom:16px;">
+      <div class="stock-card green"><div class="stock-label">Ready</div><div class="stock-big" style="color:var(--green)">${ready.length}</div><div class="stock-sub">Already covered by ${getWarehouseName(wh)}.</div></div>
+      <div class="stock-card amber"><div class="stock-label">Transfer</div><div class="stock-big" style="color:var(--amber)">${transfer.length}</div><div class="stock-sub">Can be solved from another warehouse.</div></div>
+      <div class="stock-card teal"><div class="stock-label">Buy Local</div><div class="stock-big" style="color:var(--teal)">${local.length}</div><div class="stock-sub">Cheaper/faster bought on the ground.</div></div>
+      <div class="stock-card purple"><div class="stock-label">Vendor Orders</div><div class="stock-big" style="color:var(--purple)">${orderRows.length}</div><div class="stock-sub">${vendorGroups.length} vendor${vendorGroups.length===1?'':'s'} to contact.</div></div>
+    </div>`;
+
+  const transferSection = transfer.length ? `
+    <div class="sec-head">Transfer between warehouses</div>
+    <div class="stock-table-wrap" style="margin-bottom:16px;">
+      <table class="stock-table">
+        <thead><tr><th>Code</th><th>Material</th><th style="text-align:center">Qty</th><th>From</th></tr></thead>
+        <tbody>${transfer.map(r=>`<tr><td><span class="code-tag">${r.item.code}</span></td><td>${escapeHTML(r.item.item)}</td><td style="text-align:center"><span class="mono-num">${r.shortfall}</span></td><td>${escapeHTML(r.other?.name||'—')}</td></tr>`).join('')}</tbody>
+      </table>
+    </div>` : '';
+
+  const localSection = local.length ? `
+    <div class="sec-head">Buy locally</div>
+    <div class="stock-table-wrap" style="margin-bottom:16px;">
+      <table class="stock-table">
+        <thead><tr><th>Code</th><th>Material</th><th style="text-align:center">Qty</th></tr></thead>
+        <tbody>${local.map(r=>`<tr><td><span class="code-tag">${r.item.code}</span></td><td>${escapeHTML(r.item.item)}</td><td style="text-align:center"><span class="mono-num">${r.shortfall}</span></td></tr>`).join('')}</tbody>
+      </table>
+    </div>` : '';
+
+  const vendorSection = vendorGroups.length ? `
+    <div class="sec-head">Vendor orders — ready to send</div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      ${vendorGroups.map(g=>{
+        const waLink = g.phone ? whatsappUrl(g.phone, g.message) : '';
+        return `
+        <div style="background:var(--bg1);border:1px solid ${g.urgent?'rgba(220,38,38,.35)':'var(--border)'};border-radius:var(--radius-lg);overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg2);flex-wrap:wrap;gap:8px;">
+            <div>
+              <div style="font-size:13px;font-weight:700;">${escapeHTML(g.vendor)}</div>
+              <div style="font-size:11px;color:var(--text3);">${g.items.length} item${g.items.length===1?'':'s'}${g.urgent?' · <span style="color:var(--red);font-weight:600">Lead-time risk</span>':''}</div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              ${waLink ? `<a href="${waLink}" target="_blank" rel="noopener" class="btn success" style="text-decoration:none;">💬 WhatsApp</a>` : `<span style="font-size:10px;color:var(--amber);">No phone on file — <a href="#" onclick="closeLogisticsPlanModal();openVendorModal();return false;" style="color:var(--accent)">add in Manage Vendors</a></span>`}
+              <button class="btn" onclick="copyDraft('lp-msg-${slug(g.vendor)}')">Copy</button>
+            </div>
+          </div>
+          <pre id="lp-msg-${slug(g.vendor)}" style="padding:11px 14px;font-size:11.5px;white-space:pre-wrap;font-family:var(--font);color:var(--text2);line-height:1.7;margin:0;">${escapeHTML(g.message)}</pre>
+        </div>`;
+      }).join('')}
+    </div>` : `<div class="sec-head">Vendor orders</div><div style="font-size:12px;color:var(--text3);padding:10px 0;">Nothing to order — all covered by stock, transfer or local buy.</div>`;
+
+  return summary + transferSection + localSection + vendorSection;
+}
+function exportLogisticsPlan(){
+  if(!logisticsEv) return;
+  const ev=logisticsEv;
+  const rows=[['Event',ev.code],['City',ev.city],['Show-up forecast',ev.showUp||0],['Warehouse',getWarehouseName(getEventWarehouse(ev))],[],['Code','Material','Need','Local Available','Shortfall','Criticality','Action','Recommendation','Vendor']];
+  getEventStockRows(ev).forEach(x=>rows.push([x.item.code,x.item.item,x.need,x.local,x.shortfall,x.crit,x.action,x.actionText,getItemVendor(x.item)]));
+  const ws=XLSX.utils.aoa_to_sheet(rows); ws['!cols']=[{wch:10},{wch:42},{wch:10},{wch:14},{wch:10},{wch:12},{wch:12},{wch:48},{wch:24}];
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Logistics Plan'); XLSX.writeFile(wb,`LOME_Logistics_Plan_${ev.code}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
 function getStockReadiness(ev){
   const rows=getEventStockRows(ev).filter(r=>r.need>0);
   const weight=r=>r.crit==='Critical'?5:r.crit==='High'?3:1;
@@ -4253,6 +4474,12 @@ function switchStockMode(mode){
   renderInventory();
 }
 function stockSetFilter(f){ stockFilter=f; renderStockUserDashboard(); }
+function openLogisticsPlanForCurrentEvent(){
+  const evId=document.getElementById('stock-event-select')?.value || curEv?.id || EVENTS[0].id;
+  const ev=EVENTS.find(e=>e.id===evId) || EVENTS[0];
+  if(!ev.reg){ showToast('Import a registration list for this event first'); return; }
+  openLogisticsPlanModal(ev);
+}
 
 function renderInventory(){
   ensureWarehouseStock();
@@ -4362,10 +4589,10 @@ function renderStockAdminTable(){
   }).join('') || `<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:28px">No items match.</td></tr>`;
 }
 function vendorSelectHtml(code, selected){
-  const list=PREFERRED_VENDORS.slice();
-  if(selected && !list.includes(selected)) list.push(selected);
+  const names=PREFERRED_VENDORS.map(v=>v.name);
+  if(selected && !names.includes(selected)) names.push(selected);
   const opts=['<option value="">— None —</option>'].concat(
-    list.map(v=>`<option value="${escapeHTML(v)}" ${v===selected?'selected':''}>${escapeHTML(v)}</option>`)
+    names.map(v=>`<option value="${escapeHTML(v)}" ${v===selected?'selected':''}>${escapeHTML(v)}</option>`)
   );
   return `<select class="stock-note-input" style="min-width:150px" onchange="setItemVendor('${code}',this.value)">${opts.join('')}</select>`;
 }
@@ -4383,26 +4610,34 @@ function closeVendorModal(){
 }
 function renderVendorList(){
   const wrap=document.getElementById('vendor-list');
-  wrap.innerHTML = PREFERRED_VENDORS.length ? PREFERRED_VENDORS.map(v=>`
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 11px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);">
-      <span style="font-size:12px;">${escapeHTML(v)}</span>
-      <button class="btn" style="padding:3px 9px;font-size:11px;" onclick="removePreferredVendor('${escapeHTML(v).replace(/'/g,"\\'")}')">Remove</button>
+  wrap.innerHTML = PREFERRED_VENDORS.length ? PREFERRED_VENDORS.map((v,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 11px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);">
+      <span style="font-size:12px;flex:1;">${escapeHTML(v.name)}</span>
+      <input type="text" value="${escapeHTML(v.phone||'')}" placeholder="Phone for WhatsApp…" style="width:160px;padding:6px 9px;font-size:11px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-family:var(--mono);" onchange="setVendorPhone(${i},this.value)"/>
+      <button class="btn" style="padding:3px 9px;font-size:11px;" onclick="removePreferredVendor('${escapeHTML(v.name).replace(/'/g,"\\'")}')">Remove</button>
     </div>`).join('') : `<div style="font-size:12px;color:var(--text3);text-align:center;padding:14px">No vendors yet — add one above.</div>`;
+}
+function setVendorPhone(idx, val){
+  if(!PREFERRED_VENDORS[idx]) return;
+  PREFERRED_VENDORS[idx].phone = val.replace(/[^0-9+]/g,'');
+  saveVendorsQuiet();
 }
 function addPreferredVendor(){
   const input=document.getElementById('new-vendor-input');
+  const phoneInput=document.getElementById('new-vendor-phone-input');
   const name=(input?.value||'').trim();
+  const phone=(phoneInput?.value||'').trim().replace(/[^0-9+]/g,'');
   if(!name) return;
-  if(PREFERRED_VENDORS.some(v=>v.toLowerCase()===name.toLowerCase())){ showToast('That vendor is already in the list'); return; }
-  PREFERRED_VENDORS.push(name);
+  if(PREFERRED_VENDORS.some(v=>v.name.toLowerCase()===name.toLowerCase())){ showToast('That vendor is already in the list'); return; }
+  PREFERRED_VENDORS.push({name, phone});
   saveVendorsQuiet();
-  input.value='';
+  input.value=''; if(phoneInput) phoneInput.value='';
   renderVendorList();
   if(stockMode==='admin') renderStockAdminTable();
   showToast(`✓ ${name} added to vendor list`);
 }
 function removePreferredVendor(name){
-  PREFERRED_VENDORS = PREFERRED_VENDORS.filter(v=>v!==name);
+  PREFERRED_VENDORS = PREFERRED_VENDORS.filter(v=>v.name!==name);
   saveVendorsQuiet();
   renderVendorList();
   if(stockMode==='admin') renderStockAdminTable();
