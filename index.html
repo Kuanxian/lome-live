@@ -1072,9 +1072,9 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
 
 <!-- ── MANAGE VENDORS MODAL ── -->
 <div class="overlay" id="vendor-modal">
-  <div class="modal" style="width:640px;max-width:94vw;">
+  <div class="modal" style="width:720px;max-width:94vw;">
     <div class="modal-hd">
-      <div><div class="modal-title">🏭 Manage Vendors</div><div class="modal-sub">Feeds the Preferred Vendor dropdown and the Logistics Plan's WhatsApp order drafts</div></div>
+      <div><div class="modal-title">🏭 Manage Vendors</div><div class="modal-sub">Feeds the Preferred Vendor dropdown and the Logistics Plan's order drafts</div></div>
       <button class="modal-x" onclick="closeVendorModal()">✕</button>
     </div>
     <div class="modal-bd" style="display:flex;flex-direction:column;gap:10px;">
@@ -1085,9 +1085,21 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
       <div style="display:flex;gap:8px;">
         <input id="new-vendor-category-input" list="vendor-category-suggestions" style="flex:1;padding:8px 11px;font-size:12px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);" placeholder="Category — e.g. Printing Services, Shipping &amp; Logistics…" onkeydown="if(event.key==='Enter')addPreferredVendor()"/>
         <datalist id="vendor-category-suggestions"></datalist>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <select id="new-vendor-contact-method" style="width:150px;padding:8px 11px;font-size:12px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);" onchange="document.getElementById('new-vendor-language').value=this.value==='wechat'?'zh':'en'">
+          <option value="whatsapp">💬 WhatsApp</option>
+          <option value="wechat">💚 WeChat</option>
+          <option value="direct">📞 Call/Direct</option>
+        </select>
+        <input id="new-vendor-wechat-input" style="width:150px;padding:8px 11px;font-size:12px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);" placeholder="WeChat ID (optional)" onkeydown="if(event.key==='Enter')addPreferredVendor()"/>
+        <select id="new-vendor-language" style="width:120px;padding:8px 11px;font-size:12px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);">
+          <option value="en">English msg</option>
+          <option value="zh">中文 message</option>
+        </select>
         <button class="btn primary" onclick="addPreferredVendor()">+ Add</button>
       </div>
-      <div style="font-size:10px;color:var(--text3);">Phone should include country code, no + or spaces needed (e.g. Malaysia: 60123456789) — used to build WhatsApp order links. Category groups vendors in the Preferred Vendor dropdown — type a new one or reuse an existing one from the suggestions.</div>
+      <div style="font-size:10px;color:var(--text3);">Phone should include country code, no + or spaces needed (e.g. Malaysia: 60123456789). Category groups vendors in the Preferred Vendor dropdown. Contact method controls whether the plan shows a WhatsApp button, a WeChat ID to message manually, or just a phone number to call/contact directly — Language controls whether the drafted order message is in English or Chinese.</div>
       <div id="vendor-list" style="display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto;"></div>
     </div>
     <div class="modal-ft">
@@ -1615,16 +1627,22 @@ ITEMS.forEach(it=>{
 // Seeded from the vendors already used in ITEMS above. Phone numbers are left blank —
 // fill them in via Manage Vendors so LOME can draft WhatsApp orders to them.
 let PREFERRED_VENDORS = [
-  {name:'Kadpo Industry (PG)', phone:'', category:''},
-  {name:'Rafflestag Malaysia', phone:'', category:''},
-  {name:'Hot Print Media (PG)', phone:'', category:''},
+  {name:'Kadpo Industry (PG)', phone:'', category:'', contactMethod:'whatsapp', wechatId:'', language:'en'},
+  {name:'Rafflestag Malaysia', phone:'', category:'', contactMethod:'whatsapp', wechatId:'', language:'en'},
+  {name:'Hot Print Media (PG)', phone:'', category:'', contactMethod:'whatsapp', wechatId:'', language:'en'},
 ];
 // Starting suggestions for the category datalist — not a fixed enum, just
 // examples so the field isn't blank the first time someone categorizes a vendor.
 const VENDOR_CATEGORY_SUGGESTIONS=['Printing Services','Shipping & Logistics','Banners & Bazooka','Stationery','Emergency/Local Supplies'];
 function normalizeVendors(arr){
   if(!Array.isArray(arr)) return null;
-  return arr.map(v=> typeof v==='string' ? {name:v, phone:'', category:''} : {name:v?.name||'', phone:v?.phone||'', category:v?.category||''}).filter(v=>v.name);
+  return arr.map(v=> typeof v==='string'
+    ? {name:v, phone:'', category:'', contactMethod:'whatsapp', wechatId:'', language:'en'}
+    : {
+        name:v?.name||'', phone:v?.phone||'', category:v?.category||'',
+        contactMethod:v?.contactMethod||'whatsapp', wechatId:v?.wechatId||'', language:v?.language||'en',
+      }
+  ).filter(v=>v.name);
 }
 function getItemVendor(it){
   const v = inventory[it.code]?.vendor;
@@ -1632,6 +1650,9 @@ function getItemVendor(it){
 }
 function getVendorPhone(name){
   return PREFERRED_VENDORS.find(v=>v.name===name)?.phone || '';
+}
+function getVendorInfo(name){
+  return PREFERRED_VENDORS.find(v=>v.name===name) || {name, phone:'', category:'', contactMethod:'whatsapp', wechatId:'', language:'en'};
 }
 
 let invFilter='all';
@@ -4347,26 +4368,42 @@ function generateLogisticsPlan(ev){
 
   const vendorGroups=Object.keys(byVendor).sort().map(vendor=>{
     const items=byVendor[vendor];
-    const phone=getVendorPhone(vendor);
+    const info=getVendorInfo(vendor);
     return {
-      vendor, phone,
+      vendor, phone:info.phone, contactMethod:info.contactMethod||'whatsapp', wechatId:info.wechatId||'', language:info.language||'en',
       items,
       urgent: items.some(r=>r.urgent),
-      message: buildVendorOrderMessage(vendor, items, ev),
+      message: buildVendorOrderMessage(vendor, items, ev, info.language||'en'),
     };
   });
 
   return {ev, rows, ready, transfer, local, orderRows, vendorGroups, unassigned};
 }
 
-function buildVendorOrderMessage(vendorName, items, ev){
+function buildVendorOrderMessage(vendorName, items, ev, language){
   const startDate=parseEventStartDate(ev.date);
   const minLead=Math.min(...items.map(r=>r.lead));
-  let orderByStr='as soon as possible';
+  const zh=language==='zh';
+  let orderByStr = zh ? '尽快' : 'as soon as possible';
   if(startDate){
     const orderBy=new Date(startDate);
     orderBy.setDate(orderBy.getDate()-minLead);
-    orderByStr=orderBy.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+    orderByStr=orderBy.toLocaleDateString(zh?'zh-CN':'en-GB',{day:'numeric',month:'short',year:'numeric'});
+  }
+  if(zh){
+    const lines=items.map(r=>`• ${r.item.code} ${r.item.item} — 数量：*${r.shortfall}*${r.item.spec?`（${r.item.spec}）`:''}`).join('\n');
+    return `您好 ${vendorName}，我们是 Success Resources 物流团队。
+
+关于 *${ev.code} — ${ev.city}*（${ev.date}）活动，我们需要订购以下物品：
+
+${lines}
+
+请您确认以下信息：
+1. 库存情况及所需交货时间
+2. 价格
+3. 最早可交货/取货日期
+
+为避免活动筹备延误，我们需要在 *${orderByStr}* 之前完成下单，谢谢！`;
   }
   const lines=items.map(r=>`• ${r.item.code} ${r.item.item} — Qty: *${r.shortfall}*${r.item.spec?` (${r.item.spec})`:''}`).join('\n');
   return `Hi ${vendorName}, this is the Logistics team at Success Resources.
@@ -4395,6 +4432,28 @@ function openLogisticsPlanModal(ev){
 }
 function closeLogisticsPlanModal(){
   document.getElementById('logistics-modal').classList.remove('show');
+}
+// WhatsApp has a real deep-link (wa.me) that opens a chat with the message
+// pre-filled. WeChat has no equivalent public link — the best we can do is
+// surface the WeChat ID/phone as a reference and rely on Copy + pasting it
+// in manually. "Direct" is for vendors reached by phone call or in person,
+// where a message draft doesn't apply at all — just Copy for notes.
+function vendorContactActionHtml(g){
+  if(g.contactMethod==='wechat'){
+    const ref=g.wechatId||g.phone;
+    return ref
+      ? `<span style="font-size:11px;color:var(--text2);background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);padding:5px 10px;">💚 WeChat: <b>${escapeHTML(ref)}</b> — copy message below and paste in chat</span>`
+      : `<span style="font-size:10px;color:var(--amber);">No WeChat ID on file — <a href="#" onclick="closeLogisticsPlanModal();openVendorModal();return false;" style="color:var(--accent)">add in Manage Vendors</a></span>`;
+  }
+  if(g.contactMethod==='direct'){
+    return g.phone
+      ? `<span style="font-size:11px;color:var(--text2);background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);padding:5px 10px;">📞 Call/contact directly: <b>${escapeHTML(g.phone)}</b></span>`
+      : `<span style="font-size:10px;color:var(--amber);">No contact info on file — <a href="#" onclick="closeLogisticsPlanModal();openVendorModal();return false;" style="color:var(--accent)">add in Manage Vendors</a></span>`;
+  }
+  const waLink = g.phone ? whatsappUrl(g.phone, g.message) : '';
+  return waLink
+    ? `<a href="${waLink}" target="_blank" rel="noopener" class="btn success" style="text-decoration:none;">💬 WhatsApp</a>`
+    : `<span style="font-size:10px;color:var(--amber);">No phone on file — <a href="#" onclick="closeLogisticsPlanModal();openVendorModal();return false;" style="color:var(--accent)">add in Manage Vendors</a></span>`;
 }
 function renderLogisticsPlanHtml(plan){
   const {ready, transfer, local, orderRows, vendorGroups, unassigned}=plan;
@@ -4442,16 +4501,15 @@ function renderLogisticsPlanHtml(plan){
     <div class="sec-head">Vendor orders — ready to send</div>
     <div style="display:flex;flex-direction:column;gap:12px;">
       ${vendorGroups.map(g=>{
-        const waLink = g.phone ? whatsappUrl(g.phone, g.message) : '';
         return `
         <div style="background:var(--bg1);border:1px solid ${g.urgent?'rgba(220,38,38,.35)':'var(--border)'};border-radius:var(--radius-lg);overflow:hidden;">
           <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg2);flex-wrap:wrap;gap:8px;">
             <div>
               <div style="font-size:13px;font-weight:700;">${escapeHTML(g.vendor)}</div>
-              <div style="font-size:11px;color:var(--text3);">${g.items.length} item${g.items.length===1?'':'s'}${g.urgent?' · <span style="color:var(--red);font-weight:600">Lead-time risk</span>':''}</div>
+              <div style="font-size:11px;color:var(--text3);">${g.items.length} item${g.items.length===1?'':'s'}${g.urgent?' · <span style="color:var(--red);font-weight:600">Lead-time risk</span>':''}${g.language==='zh'?' · 中文':''}</div>
             </div>
             <div style="display:flex;gap:6px;align-items:center;">
-              ${waLink ? `<a href="${waLink}" target="_blank" rel="noopener" class="btn success" style="text-decoration:none;">💬 WhatsApp</a>` : `<span style="font-size:10px;color:var(--amber);">No phone on file — <a href="#" onclick="closeLogisticsPlanModal();openVendorModal();return false;" style="color:var(--accent)">add in Manage Vendors</a></span>`}
+              ${vendorContactActionHtml(g)}
               <button class="btn" onclick="copyDraft('lp-msg-${slug(g.vendor)}')">Copy</button>
             </div>
           </div>
@@ -4674,11 +4732,25 @@ function renderVendorList(){
   wrap.innerHTML=catNames.map(cat=>`
     <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin:6px 0 2px;">${escapeHTML(cat)}</div>
     ${groups[cat].map(v=>`
-    <div style="display:flex;align-items:center;gap:8px;padding:8px 11px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);">
-      <span style="font-size:12px;flex:1;">${escapeHTML(v.name)}</span>
-      <input type="text" list="vendor-category-suggestions" value="${escapeHTML(v.category||'')}" placeholder="Category…" style="width:150px;padding:6px 9px;font-size:11px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);" onchange="setVendorCategory(${v.idx},this.value)"/>
-      <input type="text" value="${escapeHTML(v.phone||'')}" placeholder="Phone for WhatsApp…" style="width:150px;padding:6px 9px;font-size:11px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-family:var(--mono);" onchange="setVendorPhone(${v.idx},this.value)"/>
-      <button class="btn" style="padding:3px 9px;font-size:11px;" onclick="removePreferredVendor('${escapeHTML(v.name).replace(/'/g,"\\'")}')">Remove</button>
+    <div style="display:flex;flex-direction:column;gap:6px;padding:8px 11px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:12px;font-weight:600;flex:1;">${escapeHTML(v.name)}</span>
+        <button class="btn" style="padding:3px 9px;font-size:11px;" onclick="removePreferredVendor('${escapeHTML(v.name).replace(/'/g,"\\'")}')">Remove</button>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <input type="text" list="vendor-category-suggestions" value="${escapeHTML(v.category||'')}" placeholder="Category…" style="width:140px;padding:6px 9px;font-size:11px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);" onchange="setVendorField(${v.idx},'category',this.value)"/>
+        <input type="text" value="${escapeHTML(v.phone||'')}" placeholder="Phone…" style="width:130px;padding:6px 9px;font-size:11px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-family:var(--mono);" onchange="setVendorPhone(${v.idx},this.value)"/>
+        <select style="width:120px;padding:6px 9px;font-size:11px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);" onchange="setVendorField(${v.idx},'contactMethod',this.value)">
+          <option value="whatsapp" ${v.contactMethod==='whatsapp'?'selected':''}>💬 WhatsApp</option>
+          <option value="wechat" ${v.contactMethod==='wechat'?'selected':''}>💚 WeChat</option>
+          <option value="direct" ${v.contactMethod==='direct'?'selected':''}>📞 Call/Direct</option>
+        </select>
+        <input type="text" value="${escapeHTML(v.wechatId||'')}" placeholder="WeChat ID…" style="width:110px;padding:6px 9px;font-size:11px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);" onchange="setVendorField(${v.idx},'wechatId',this.value)"/>
+        <select style="width:110px;padding:6px 9px;font-size:11px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);" onchange="setVendorField(${v.idx},'language',this.value)">
+          <option value="en" ${v.language==='en'?'selected':''}>English msg</option>
+          <option value="zh" ${v.language==='zh'?'selected':''}>中文 message</option>
+        </select>
+      </div>
     </div>`).join('')}
   `).join('');
 }
@@ -4687,24 +4759,31 @@ function setVendorPhone(idx, val){
   PREFERRED_VENDORS[idx].phone = val.replace(/[^0-9+]/g,'');
   saveVendorsQuiet();
 }
-function setVendorCategory(idx, val){
+function setVendorField(idx, field, val){
   if(!PREFERRED_VENDORS[idx]) return;
-  PREFERRED_VENDORS[idx].category = val.trim();
+  PREFERRED_VENDORS[idx][field] = val.trim();
   saveVendorsQuiet();
-  renderVendorList();
+  if(field==='category') renderVendorList();
 }
 function addPreferredVendor(){
   const input=document.getElementById('new-vendor-input');
   const phoneInput=document.getElementById('new-vendor-phone-input');
   const categoryInput=document.getElementById('new-vendor-category-input');
+  const contactMethodInput=document.getElementById('new-vendor-contact-method');
+  const wechatInput=document.getElementById('new-vendor-wechat-input');
+  const languageInput=document.getElementById('new-vendor-language');
   const name=(input?.value||'').trim();
   const phone=(phoneInput?.value||'').trim().replace(/[^0-9+]/g,'');
   const category=(categoryInput?.value||'').trim();
+  const contactMethod=contactMethodInput?.value||'whatsapp';
+  const wechatId=(wechatInput?.value||'').trim();
+  const language=languageInput?.value||'en';
   if(!name) return;
   if(PREFERRED_VENDORS.some(v=>v.name.toLowerCase()===name.toLowerCase())){ showToast('That vendor is already in the list'); return; }
-  PREFERRED_VENDORS.push({name, phone, category});
+  PREFERRED_VENDORS.push({name, phone, category, contactMethod, wechatId, language});
   saveVendorsQuiet();
   input.value=''; if(phoneInput) phoneInput.value=''; if(categoryInput) categoryInput.value='';
+  if(wechatInput) wechatInput.value=''; if(contactMethodInput) contactMethodInput.value='whatsapp'; if(languageInput) languageInput.value='en';
   renderVendorList();
   if(stockMode==='admin') renderStockAdminTable();
   showToast(`✓ ${name} added to vendor list`);
