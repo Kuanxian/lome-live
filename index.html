@@ -1089,7 +1089,7 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
       <div style="display:flex;gap:8px;">
         <select id="new-vendor-contact-method" style="width:150px;padding:8px 11px;font-size:12px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);" onchange="document.getElementById('new-vendor-language').value=this.value==='wechat'?'zh':'en'">
           <option value="whatsapp">💬 WhatsApp</option>
-          <option value="wechat">💚 WeChat</option>
+          <option value="wechat">WeChat</option>
           <option value="direct">📞 Call/Direct</option>
         </select>
         <input id="new-vendor-wechat-input" style="width:150px;padding:8px 11px;font-size:12px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);" placeholder="WeChat ID (optional)" onkeydown="if(event.key==='Enter')addPreferredVendor()"/>
@@ -4442,7 +4442,7 @@ function vendorContactActionHtml(g){
   if(g.contactMethod==='wechat'){
     const ref=g.wechatId||g.phone;
     return ref
-      ? `<span style="font-size:11px;color:var(--text2);background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);padding:5px 10px;">💚 WeChat: <b>${escapeHTML(ref)}</b> — copy message below and paste in chat</span>`
+      ? `<span style="font-size:11px;color:var(--text2);background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);padding:5px 10px;">WeChat: <b>${escapeHTML(ref)}</b> — copy message below and paste in chat</span>`
       : `<span style="font-size:10px;color:var(--amber);">No WeChat ID on file — <a href="#" onclick="closeLogisticsPlanModal();openVendorModal();return false;" style="color:var(--accent)">add in Manage Vendors</a></span>`;
   }
   if(g.contactMethod==='direct'){
@@ -4742,7 +4742,7 @@ function renderVendorList(){
         <input type="text" value="${escapeHTML(v.phone||'')}" placeholder="Phone…" style="width:130px;padding:6px 9px;font-size:11px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-family:var(--mono);" onchange="setVendorPhone(${v.idx},this.value)"/>
         <select style="width:120px;padding:6px 9px;font-size:11px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);" onchange="setVendorField(${v.idx},'contactMethod',this.value)">
           <option value="whatsapp" ${v.contactMethod==='whatsapp'?'selected':''}>💬 WhatsApp</option>
-          <option value="wechat" ${v.contactMethod==='wechat'?'selected':''}>💚 WeChat</option>
+          <option value="wechat" ${v.contactMethod==='wechat'?'selected':''}>WeChat</option>
           <option value="direct" ${v.contactMethod==='direct'?'selected':''}>📞 Call/Direct</option>
         </select>
         <input type="text" value="${escapeHTML(v.wechatId||'')}" placeholder="WeChat ID…" style="width:110px;padding:6px 9px;font-size:11px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);" onchange="setVendorField(${v.idx},'wechatId',this.value)"/>
