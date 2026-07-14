@@ -520,6 +520,7 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
   <div class="nav-item" onclick="showPage('forecast',this)"><span class="nav-icon">📈</span>Forecast<span class="nav-badge nb-amber" id="fc-badge">—</span></div>
   <div class="nav-item" onclick="showPage('inventory',this)"><span class="nav-icon">📦</span>Stock Management<span class="nav-badge nb-red" id="inv-badge">—</span></div>
   <div class="nav-item" onclick="showPage('packing',this)"><span class="nav-icon">🚚</span>Packing & Dispatch</div>
+  <div class="nav-item" onclick="showPage('postevent',this)"><span class="nav-icon">🏁</span>Post-Event Closeout</div>
   <!-- Stationery merged into Stock Control -->
   <div class="nav-item" onclick="showPage('ai',this)"><span class="nav-icon">🧠</span>Ask LOME</div>
   <div class="nav-item" onclick="showPage('pnl',this)"><span class="nav-icon">📊</span>Event P&amp;L</div>
@@ -850,18 +851,32 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
 
 
 
+    <!-- POST-EVENT CLOSEOUT PAGE -->
+    <div class="page" id="page-postevent">
+      <div style="flex:1;overflow-y:auto;padding:20px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;">
+        <div id="postevent-body" style="max-width:1200px;"></div>
+      </div>
+    </div>
+
     <!-- P&L FORECAST PAGE - REBUILT -->
     <div class="page" id="page-pnl">
       <div style="flex:1;overflow-y:auto;padding:20px;scrollbar-width:thin;" id="pnl-scroll">
 
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;">
           <div>
-            <div style="font-size:16px;font-weight:700;letter-spacing:-0.3px;">Event P&L Simulator</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:2px;">Real data from 25 events · 4 trainers · blended QL rate = 60% country avg + 40% trainer avg</div>
+            <div style="font-size:16px;font-weight:700;letter-spacing:-0.3px;" id="pnl-page-title">Event P&L Simulator</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px;" id="pnl-page-sub">Real data from 25 events · 4 trainers · blended QL rate = 60% country avg + 40% trainer avg</div>
           </div>
-          <button class="btn primary" onclick="runPnlForecast()">▶ Run forecast</button>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div class="stock-tabs" style="border:none;padding:0;background:transparent;">
+              <button class="stock-tab on" id="pnl-tab-sim" onclick="switchPnlView('sim')">📐 Forecast Simulator</button>
+              <button class="stock-tab" id="pnl-tab-actual" onclick="switchPnlView('actual')">🏁 Actual Results</button>
+            </div>
+            <button class="btn primary" id="pnl-run-btn" onclick="runPnlForecast()">▶ Run forecast</button>
+          </div>
         </div>
 
+        <div id="pnl-sim-view">
         <!-- EVENT PARAMS -->
         <div style="background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px;">
           <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Event parameters</div>
@@ -945,6 +960,10 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
 
         <!-- RESULTS -->
         <div id="pf-results" style="display:none;"></div>
+        </div><!-- /pnl-sim-view -->
+
+        <!-- ACTUAL RESULTS VIEW (post-event) -->
+        <div id="pnl-actual-view" style="display:none;"></div>
 
       </div>
     </div>
@@ -1409,6 +1428,10 @@ function initFirebaseLiveSync(){
         eventItemExclusions = data.exclusions;
         try{ localStorage.setItem('lome_exclusions', JSON.stringify(eventItemExclusions)); }catch(e){}
       }
+      if(data.results && typeof data.results==='object'){
+        EVENT_RESULTS = data.results;
+        try{ localStorage.setItem('lome_results', JSON.stringify(EVENT_RESULTS)); }catch(e){}
+      }
       refreshAllSharedViews();
       cloudApplyingRemote = false;
     }, err=>{
@@ -1439,6 +1462,7 @@ function scheduleCloudSave(){
         syncConfig: syncConfig || {},
         vendors: PREFERRED_VENDORS || [],
         exclusions: eventItemExclusions || {},
+        results: EVENT_RESULTS || {},
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
         updatedBy: getClientLabel()
       }, { merge:true });
@@ -1738,6 +1762,24 @@ function loadExclusionsFromLocal(){
     const raw=localStorage.getItem('lome_exclusions');
     if(raw) eventItemExclusions=JSON.parse(raw)||{};
   }catch(e){ console.error('loadExclusionsFromLocal:', e); }
+}
+
+// ── POST-EVENT RESULTS & CLOSEOUT ────────────────────────────────
+// One record per event id. Holds the actual attendance keyed in after the
+// event, the stock deductions that were applied to the warehouse (so a
+// closeout can never be applied twice, and can be undone), and the actual
+// P&L saved from the Results tab. Shared across staff via cloud sync.
+// { evId: { day1, day3, vip, ql, wh, closedAt, deductions:{code:qty}, pnl:{...} } }
+let EVENT_RESULTS={};
+function saveResultsQuiet(){
+  try{ localStorage.setItem('lome_results', JSON.stringify(EVENT_RESULTS)); }catch(e){}
+  scheduleCloudSave();
+}
+function loadResultsFromLocal(){
+  try{
+    const raw=localStorage.getItem('lome_results');
+    if(raw) EVENT_RESULTS=JSON.parse(raw)||{};
+  }catch(e){ console.error('loadResultsFromLocal:', e); }
 }
 function getNeededForEvent(code, evId){
   if(isItemIgnoredForEvent(code, evId)) return 0;
@@ -2457,6 +2499,12 @@ function getInventoryPayload(){
       condition:    inv.condition    || (it.reusable?'Good':''),
       notes:        inv.notes        || '',
       vendor:       inv.vendor       ?? (it.vendor||''),
+      // Per-warehouse split — without persisting these, the Admin Stock Input
+      // quantities silently reset to "everything in MY" on every reload.
+      wh:           inv.wh           || null,
+      reserved:     inv.reserved     || null,
+      lastChecked:  inv.lastChecked  || '',
+      adminNotes:   inv.adminNotes   || '',
     };
   });
   return data;
@@ -2477,6 +2525,10 @@ function applyInventoryData(data){
     if(d.condition!==undefined)          inventory[it.code].condition    = d.condition;
     if(d.notes!==undefined)              inventory[it.code].notes        = d.notes;
     if(d.vendor!==undefined)             inventory[it.code].vendor       = d.vendor;
+    if(d.wh && typeof d.wh==='object')   inventory[it.code].wh           = {...d.wh};
+    if(d.reserved && typeof d.reserved==='object') inventory[it.code].reserved = {...d.reserved};
+    if(d.lastChecked!==undefined)        inventory[it.code].lastChecked  = d.lastChecked;
+    if(d.adminNotes!==undefined)         inventory[it.code].adminNotes   = d.adminNotes;
   });
 }
 
@@ -3070,7 +3122,7 @@ function showPage(id,navEl){
     const map={overview:'Over',forecast:'Fore',inventory:'Inven',packing:'Pack',stationery:'Stat',ai:'Emergency'};
     if(n.textContent.trim().startsWith(map[id]))n.classList.add('active');
   });
-  const __titles={overview:'Overview',forecast:'Forecast & Registration',inventory:'Stock Management',packing:'Packing & Dispatch',stationery:'Stationery',ai:'Ask LOME',pnl:'Event P&L Forecast'};
+  const __titles={overview:'Overview',forecast:'Forecast & Registration',inventory:'Stock Management',packing:'Packing & Dispatch',stationery:'Stationery',ai:'Ask LOME',pnl:'Event P&L Forecast',postevent:'Post-Event Closeout'};
   document.getElementById('topbar-title').textContent=__titles[id]||id;
   if(id==='forecast')renderForecast();
   if(id==='inventory')renderInventory();
@@ -3078,6 +3130,7 @@ function showPage(id,navEl){
   if(id==='stationery')renderStat();
   if(id==='ai')buildMatChips();
   if(id==='pnl'){populatePnlSelectors();updatePnlTotals();}
+  if(id==='postevent')renderPostEvent();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -3117,6 +3170,7 @@ function startLomeApp(){
   loadEventsFromLocal();
   loadVendorsFromLocal();
   loadExclusionsFromLocal();
+  loadResultsFromLocal();
   loadSyncConfig();
   initFirebaseLiveSync();
   computeForecasts();
@@ -3895,6 +3949,481 @@ function runPnlForecast(){
   results.insertAdjacentHTML('beforeend', verdictHtml);
   results.style.display = 'block';
   results.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ═══════════════════════════════════════════════════════════════
+// POST-EVENT CLOSEOUT — deduct consumed stock after an event ends
+// ═══════════════════════════════════════════════════════════════
+let peEvId=null;
+
+function peGetEvent(){ return EVENTS.find(e=>e.id===peEvId) || EVENTS[0]; }
+
+function eventHasEnded(ev){
+  const start=parseEventStartDate(ev.date);
+  if(!start) return false;
+  const end=new Date(start); end.setDate(end.getDate()+3); // 3-day event
+  return new Date()>=end;
+}
+
+// Actual consumption from real attendance — no 5% buffer, no forecast:
+// this is what physically left the warehouse.
+function getActualUsedQty(item, a){
+  const day1=a.day1||0, vip=Math.min(a.vip||0,day1), ql=a.ql||0;
+  const std=Math.max(0,day1-vip);
+  if(!item.paxBased) return item.fixedQty||0;
+  if(item.ratio===1.0) return day1;
+  if(item.ratio==='vip') return vip;
+  if(item.ratio==='std') return std;
+  if(item.ratio==='ql') return ql;
+  return Math.round(day1*(item.ratio||0));
+}
+
+function peReadActuals(){
+  return {
+    day1: Math.max(0,parseInt(document.getElementById('pe-day1')?.value)||0),
+    day3: Math.max(0,parseInt(document.getElementById('pe-day3')?.value)||0),
+    vip:  Math.max(0,parseInt(document.getElementById('pe-vip')?.value)||0),
+    ql:   Math.max(0,parseInt(document.getElementById('pe-ql')?.value)||0),
+  };
+}
+
+function renderPostEvent(){
+  ensureWarehouseStock();
+  const body=document.getElementById('postevent-body');
+  if(!body) return;
+  if(!peEvId){
+    // default to the most recently ended event, else the current one
+    const ended=EVENTS.filter(eventHasEnded);
+    peEvId=(ended.length?ended[ended.length-1]:curEv||EVENTS[0]).id;
+  }
+  const ev=peGetEvent(); peEvId=ev.id;
+  const rec=EVENT_RESULTS[ev.id]||{};
+  const closed=!!rec.closedAt;
+  const wh=rec.wh||getEventWarehouse(ev);
+
+  const evOptions=EVENTS.map(e=>`<option value="${e.id}" ${e.id===ev.id?'selected':''}>${e.code} · ${e.city}${eventHasEnded(e)?' · ✅ ended':''}</option>`).join('');
+
+  let html=`
+    <div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:14px;">
+      <div class="fld" style="min-width:260px;">
+        <div class="fld-label">Event to close out</div>
+        <select class="fld-select" onchange="peEvId=this.value;renderPostEvent()">${evOptions}</select>
+      </div>
+      <div class="fld" style="min-width:220px;">
+        <div class="fld-label">Deduct from warehouse</div>
+        <select class="fld-select" id="pe-wh" onchange="renderPeTable()" ${closed?'disabled':''}>
+          ${LOME_WAREHOUSES.map(w=>`<option value="${w.id}" ${w.id===wh?'selected':''}>${w.name}</option>`).join('')}
+        </select>
+      </div>
+      <div style="font-size:11px;color:var(--text3);padding-bottom:9px;">${eventHasEnded(ev)?'This event has ended — key in the actual numbers below.':'⚠ This event has not ended yet. You can still close it out, but usually you do this after the last day.'}</div>
+    </div>`;
+
+  if(closed){
+    const dedRows=Object.entries(rec.deductions||{}).map(([code,qty])=>{
+      const it=ITEMS.find(i=>i.code===code);
+      return `<div class="stock-mini-row"><span><b style="font-family:var(--mono);font-size:10px;color:var(--text3);">${code}</b> ${it?it.item:code}</span><span class="stock-pill" style="background:var(--red-bg,rgba(220,38,38,.1));color:var(--red);">−${qty.toLocaleString()}</span></div>`;
+    }).join('') || '<div style="font-size:12px;color:var(--text3);">No units were deducted (stock was already zero).</div>';
+    const totalDed=Object.values(rec.deductions||{}).reduce((s,q)=>s+q,0);
+    html+=`
+    <div class="stock-verdict" style="margin-bottom:14px;">
+      <div class="stock-verdict-icon">🏁</div>
+      <div style="flex:1;">
+        <div class="stock-verdict-title">${ev.code} is closed out</div>
+        <div class="stock-verdict-body">
+          Closed on <b>${new Date(rec.closedAt).toLocaleString()}</b> · Stock deducted from <b>${getWarehouseName(rec.wh)}</b>.<br>
+          Actuals: <b>${rec.day1||0}</b> Day 1 pax · <b>${rec.day3||0}</b> Day 3 pax · <b>${rec.vip||0}</b> VIP · <b>${rec.ql||0}</b> QL sales · <b>${totalDed.toLocaleString()}</b> total units consumed.
+        </div>
+      </div>
+    </div>
+    <div class="stock-grid2">
+      <div style="background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Stock deducted</div>
+        <div class="stock-mini-list" style="max-height:46vh;overflow-y:auto;">${dedRows}</div>
+      </div>
+      <div style="background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;">Next steps</div>
+        <button class="btn primary" onclick="showPage('pnl');switchPnlView('actual')">📊 Record actual P&L result</button>
+        <button class="btn" onclick="showPage('inventory')">📦 Review remaining stock</button>
+        <button class="btn" style="color:var(--red);border-color:rgba(220,38,38,.3);" onclick="undoPostEventCloseout()">↩ Undo closeout (restore stock)</button>
+        <div style="font-size:10.5px;color:var(--text3);line-height:1.6;">Undo puts every deducted unit back into ${getWarehouseName(rec.wh)} — use it if the numbers were keyed wrongly, then close out again.</div>
+      </div>
+    </div>`;
+    body.innerHTML=html;
+    return;
+  }
+
+  // Not yet closed — attendance form + usage table
+  const d1=rec.day1 ?? (ev.showUp || Math.round((ev.reg||0)*0.75));
+  const d3=rec.day3 ?? Math.round(d1*0.85);
+  const vip=rec.vip ?? Math.round(d1*(ev.vipPct||38)/100);
+  const ql=rec.ql ?? (ev.id==='SG'?34:Math.round(d3*(ev.qlPct||10)/100));
+  html+=`
+    <div style="background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Actual attendance & sales</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+        <div class="fld"><div class="fld-label">Day 1 show-up (pax)</div><input class="fld-input" type="number" id="pe-day1" value="${d1}" oninput="renderPeTable()"/></div>
+        <div class="fld"><div class="fld-label">Day 3 room (pax)</div><input class="fld-input" type="number" id="pe-day3" value="${d3}" oninput="renderPeTable()"/></div>
+        <div class="fld"><div class="fld-label">VIP pax</div><input class="fld-input" type="number" id="pe-vip" value="${vip}" oninput="renderPeTable()"/></div>
+        <div class="fld"><div class="fld-label">QL sales (buyers)</div><input class="fld-input" type="number" id="pe-ql" value="${ql}" oninput="renderPeTable()"/></div>
+      </div>
+      <div class="pnl-fixed-note" style="margin-top:10px;">💡 LOME auto-calculates how many units of each item were consumed from these numbers. You can still adjust any line below (e.g. spoilage, extra giveaways) before applying.</div>
+    </div>
+    <div id="pe-table"></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
+      <button class="btn success" onclick="applyPostEventCloseout()">🏁 Apply deduction & close out ${ev.code}</button>
+    </div>`;
+  body.innerHTML=html;
+  renderPeTable();
+}
+
+function peConsumableItems(evId){
+  return ITEMS.filter(it=>!it.reusable && !isItemIgnoredForEvent(it.code,evId));
+}
+
+function renderPeTable(){
+  ensureWarehouseStock();
+  const ev=peGetEvent();
+  const box=document.getElementById('pe-table');
+  if(!box||!ev) return;
+  const wh=document.getElementById('pe-wh')?.value||getEventWarehouse(ev);
+  const a=peReadActuals();
+  // keep any manual overrides the user already typed
+  const overrides={};
+  peConsumableItems(ev.id).forEach(it=>{
+    const el=document.getElementById('pe-used-'+it.code);
+    if(el && el.dataset.touched==='1') overrides[it.code]=Math.max(0,parseInt(el.value)||0);
+  });
+  const basisLabel=it=> !it.paxBased?`Fixed ×${it.fixedQty||0}`
+    : it.ratio==='vip'?'Per VIP' : it.ratio==='std'?'Per Standard' : it.ratio==='ql'?'Per QL buyer'
+    : it.ratio===1.0?'Per pax' : `${it.ratio} per pax`;
+  let shortfalls=0, totalUnits=0;
+  const rows=peConsumableItems(ev.id).map(it=>{
+    const auto=getActualUsedQty(it,a);
+    const used=overrides[it.code]!==undefined?overrides[it.code]:auto;
+    const stock=inventory[it.code].wh[wh]||0;
+    const after=Math.max(0,stock-used);
+    const short=used>stock;
+    if(short) shortfalls++;
+    totalUnits+=Math.min(used,stock);
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--text3);">${it.code}</td>
+      <td style="font-size:11.5px;">${it.item}</td>
+      <td style="font-size:10.5px;color:var(--text3);">${basisLabel(it)}</td>
+      <td style="text-align:center;font-family:var(--mono);color:var(--text3);">${auto.toLocaleString()}</td>
+      <td style="text-align:center;"><input class="stock-input" id="pe-used-${it.code}" type="number" value="${used}" oninput="this.dataset.touched='1';renderPeTotals()" data-touched="${overrides[it.code]!==undefined?'1':'0'}"/></td>
+      <td style="text-align:center;font-family:var(--mono);" id="pe-stock-${it.code}">${stock.toLocaleString()}</td>
+      <td style="text-align:center;font-family:var(--mono);font-weight:700;color:${short?'var(--red)':'var(--green)'};" id="pe-after-${it.code}">${after.toLocaleString()}${short?' ⚠':''}</td>
+    </tr>`;
+  }).join('');
+  box.innerHTML=`
+    <div class="stock-table-wrap">
+      <table class="stock-table" style="min-width:900px;">
+        <thead><tr>
+          <th style="width:60px;">Code</th><th>Item</th><th style="width:110px;">Basis</th>
+          <th style="width:90px;text-align:center;">Auto calc</th>
+          <th style="width:110px;text-align:center;">Actual used</th>
+          <th style="width:110px;text-align:center;">Stock @ ${getWarehouseName(wh)}</th>
+          <th style="width:110px;text-align:center;">After closeout</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div id="pe-totals" style="margin-top:8px;font-size:11.5px;color:var(--text2);"></div>`;
+  renderPeTotals();
+}
+
+function renderPeTotals(){
+  ensureWarehouseStock();
+  const ev=peGetEvent();
+  const wh=document.getElementById('pe-wh')?.value||getEventWarehouse(ev);
+  let totalUsed=0,totalDed=0,shorts=0;
+  peConsumableItems(ev.id).forEach(it=>{
+    const el=document.getElementById('pe-used-'+it.code);
+    if(!el) return;
+    const used=Math.max(0,parseInt(el.value)||0);
+    const stock=inventory[it.code].wh[wh]||0;
+    const after=Math.max(0,stock-used);
+    const afterEl=document.getElementById('pe-after-'+it.code);
+    if(afterEl){ afterEl.style.color=used>stock?'var(--red)':'var(--green)'; afterEl.textContent=after.toLocaleString()+(used>stock?' ⚠':''); }
+    totalUsed+=used; totalDed+=Math.min(used,stock);
+    if(used>stock) shorts++;
+  });
+  const box=document.getElementById('pe-totals');
+  if(box) box.innerHTML=`Will deduct <b>${totalDed.toLocaleString()}</b> units from <b>${getWarehouseName(wh)}</b>.`+
+    (shorts>0?` <span style="color:var(--red);">⚠ ${shorts} item(s) show more usage than recorded stock — the deduction stops at zero (stock never goes negative). Fix the warehouse count later in Admin Stock Input if it was wrong.</span>`:'');
+}
+
+function applyPostEventCloseout(){
+  const ev=peGetEvent(); if(!ev) return;
+  ensureWarehouseStock();
+  const wh=document.getElementById('pe-wh')?.value||getEventWarehouse(ev);
+  const a=peReadActuals();
+  if(!confirm(`Close out ${ev.code}?\n\nThe "Actual used" quantities will be deducted from ${getWarehouseName(wh)}. You can undo this later if needed.`)) return;
+  const deductions={};
+  let totalUnits=0;
+  peConsumableItems(ev.id).forEach(it=>{
+    const el=document.getElementById('pe-used-'+it.code);
+    const used=Math.max(0,parseInt(el?.value)||0);
+    if(!used) return;
+    const have=inventory[it.code].wh[wh]||0;
+    const ded=Math.min(used,have);
+    if(ded>0){
+      inventory[it.code].wh[wh]=have-ded;
+      inventory[it.code].stock=LOME_WAREHOUSES.reduce((s,w)=>s+(inventory[it.code].wh[w.id]||0),0);
+      deductions[it.code]=ded;
+      totalUnits+=ded;
+    }
+  });
+  EVENT_RESULTS[ev.id]={...(EVENT_RESULTS[ev.id]||{}), day1:a.day1, day3:a.day3, vip:a.vip, ql:a.ql, wh, closedAt:new Date().toISOString(), deductions};
+  saveInventoryQuiet();
+  saveResultsQuiet();
+  renderPostEvent();
+  refreshAllInventoryViews();
+  showToast(`🏁 ${ev.code} closed — ${totalUnits.toLocaleString()} units deducted from ${getWarehouseName(wh)}`);
+}
+
+function undoPostEventCloseout(){
+  const ev=peGetEvent();
+  const rec=EVENT_RESULTS[ev.id];
+  if(!rec||!rec.closedAt) return;
+  if(!confirm(`Undo the closeout for ${ev.code}?\n\nAll deducted units will be added back to ${getWarehouseName(rec.wh)}.`)) return;
+  ensureWarehouseStock();
+  Object.entries(rec.deductions||{}).forEach(([code,qty])=>{
+    if(!inventory[code]) return;
+    inventory[code].wh[rec.wh]=(inventory[code].wh[rec.wh]||0)+qty;
+    inventory[code].stock=LOME_WAREHOUSES.reduce((s,w)=>s+(inventory[code].wh[w.id]||0),0);
+  });
+  delete rec.closedAt;
+  delete rec.deductions;
+  saveInventoryQuiet();
+  saveResultsQuiet();
+  renderPostEvent();
+  refreshAllInventoryViews();
+  showToast('↩ Closeout undone — stock restored');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// P&L ACTUAL RESULTS — what really happened, vs the model
+// ═══════════════════════════════════════════════════════════════
+let pnlView='sim';
+
+function switchPnlView(v){
+  pnlView=v;
+  const sim=document.getElementById('pnl-sim-view');
+  const act=document.getElementById('pnl-actual-view');
+  if(sim) sim.style.display = v==='sim'?'block':'none';
+  if(act) act.style.display = v==='actual'?'block':'none';
+  const run=document.getElementById('pnl-run-btn');
+  if(run) run.style.display = v==='sim'?'':'none';
+  document.getElementById('pnl-tab-sim')?.classList.toggle('on',v==='sim');
+  document.getElementById('pnl-tab-actual')?.classList.toggle('on',v==='actual');
+  const t=document.getElementById('pnl-page-title'), s=document.getElementById('pnl-page-sub');
+  if(t) t.textContent = v==='sim'?'Event P&L Simulator':'Event P&L — Actual Results';
+  if(s) s.textContent = v==='sim'
+    ? 'Real data from 25 events · 4 trainers · blended QL rate = 60% country avg + 40% trainer avg'
+    : 'Key in what actually happened — attendance, QL sales and real spend — to lock in the event result.';
+  if(v==='actual') renderPnlActuals();
+}
+
+function pnlEventCountry(ev){
+  const map={SG:'Singapore',BKK:'Thailand',JB:'Malaysia',KL:'Malaysia'};
+  if(map[ev.id]) return map[ev.id];
+  const city=(ev.city||'').toLowerCase();
+  if(city.includes('singapore')) return 'Singapore';
+  if(city.includes('bangkok')) return 'Thailand';
+  return 'Malaysia';
+}
+
+const PNL_ACTUAL_COST_LINES=[
+  ['Venue','venue'],['AV Vendor','av'],['Lead Trainer Fee','lt-fee'],['Assisting Trainer Fee','at-fee'],
+  ['Lead Trainer Flight','lt-flight'],['Assisting Trainer Flight','at-flight'],['F&B','fb'],['Printing','print'],
+  ['Accommodation + Petty Cash','accom'],['Translation','translation'],['Other / Contingency','other'],
+];
+// map our short keys onto the simulator's SGD defaults so a fresh Results
+// form starts from the known MMI2607SG cost base
+const PNL_ACTUAL_DEFAULT_KEYMAP={venue:'pfc-venue',av:'pfc-av','lt-fee':'pfc-lt-fee','at-fee':'pfc-at-fee','lt-flight':'pfc-lt-flight','at-flight':'pfc-at-flight',fb:'pfc-fb',print:'pfc-print',accom:'pfc-accom',translation:'pfc-translation',other:'pfc-other'};
+
+let prEvId=null;
+
+function renderPnlActuals(){
+  const box=document.getElementById('pnl-actual-view');
+  if(!box) return;
+  if(!prEvId){
+    const closed=EVENTS.filter(e=>EVENT_RESULTS[e.id]?.closedAt);
+    prEvId=(closed.length?closed[closed.length-1]:curEv||EVENTS[0]).id;
+  }
+  const ev=EVENTS.find(e=>e.id===prEvId)||EVENTS[0]; prEvId=ev.id;
+  const rec=EVENT_RESULTS[ev.id]||{};
+  const pnl=rec.pnl||{};
+  const cur=pnl.cur||({SG:'SGD',BKK:'THB'}[ev.id]||'MYR');
+  const rate=PNL_FX[cur]||1;
+  const trainer=pnl.trainer||'Mac Attram';
+  const vipPrice=pnl.vipPrice ?? (ev.id==='SG'?156: ev.id==='BKK'?3990:699);
+  const stdPrice=pnl.stdPrice ?? (ev.id==='SG'?29: ev.id==='BKK'?990:99);
+  const qlPriceUSD=pnl.qlPriceUSD ?? 5997;
+  const day1=rec.day1??'', day3=rec.day3??'', vip=rec.vip??'', ql=rec.ql??(ev.id==='SG'?34:'');
+  const costs=pnl.costs||{};
+  const costVal=key=> costs[key] ?? Math.round((PNL_SGD_DEFAULTS[PNL_ACTUAL_DEFAULT_KEYMAP[key]]||0)*rate);
+
+  box.innerHTML=`
+    <div style="background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Event & actual attendance</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+        <div class="fld"><div class="fld-label">Event</div>
+          <select class="fld-select" onchange="prEvId=this.value;renderPnlActuals()">
+            ${EVENTS.map(e=>`<option value="${e.id}" ${e.id===ev.id?'selected':''}>${e.code} · ${e.city}${EVENT_RESULTS[e.id]?.closedAt?' · 🏁':''}</option>`).join('')}
+          </select>
+        </div>
+        <div class="fld"><div class="fld-label">Lead trainer</div>
+          <select class="fld-select" id="pr-trainer" onchange="updatePnlActuals()">
+            ${Object.keys(PNL_TRAINERS).map(t=>`<option ${t===trainer?'selected':''}>${t}</option>`).join('')}
+          </select>
+        </div>
+        <div class="fld"><div class="fld-label">Currency</div>
+          <select class="fld-select" id="pr-currency" onchange="updatePnlActuals()">
+            ${['SGD','MYR','USD','THB'].map(c=>`<option ${c===cur?'selected':''}>${c}</option>`).join('')}
+          </select>
+        </div>
+        <div></div>
+        <div class="fld"><div class="fld-label">Day 1 show-up (pax)</div><input class="fld-input" type="number" id="pr-day1" value="${day1}" oninput="updatePnlActuals()"/></div>
+        <div class="fld"><div class="fld-label">Day 3 room (pax)</div><input class="fld-input" type="number" id="pr-day3" value="${day3}" oninput="updatePnlActuals()"/></div>
+        <div class="fld"><div class="fld-label">VIP pax</div><input class="fld-input" type="number" id="pr-vip" value="${vip}" oninput="updatePnlActuals()"/></div>
+        <div class="fld"><div class="fld-label">QL sales (buyers)</div><input class="fld-input" type="number" id="pr-ql" value="${ql}" oninput="updatePnlActuals()"/></div>
+        <div class="fld"><div class="fld-label">Ticket price (VIP)</div><input class="fld-input" type="number" id="pr-vip-price" value="${vipPrice}" oninput="updatePnlActuals()"/></div>
+        <div class="fld"><div class="fld-label">Ticket price (Standard)</div><input class="fld-input" type="number" id="pr-std-price" value="${stdPrice}" oninput="updatePnlActuals()"/></div>
+        <div class="fld"><div class="fld-label">QL price (USD)</div><input class="fld-input" type="number" id="pr-ql-price" value="${qlPriceUSD}" oninput="updatePnlActuals()"/></div>
+        <div></div>
+      </div>
+      ${rec.closedAt?'<div class="pnl-fixed-note" style="margin-top:10px;">✅ Attendance pre-filled from the Post-Event Closeout for this event.</div>':''}
+    </div>
+
+    <div style="background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Actual spend <span id="pr-cur-label" style="font-weight:400;color:var(--text3);"></span></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+        ${PNL_ACTUAL_COST_LINES.map(([label,key])=>`<div class="fld"><div class="fld-label">${label}</div><input class="fld-input" type="number" id="pr-c-${key}" value="${costVal(key)}" oninput="updatePnlActuals()"/></div>`).join('')}
+      </div>
+    </div>
+
+    <div id="pr-summary"></div>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin:12px 0 24px;">
+      <button class="btn success" onclick="savePnlActuals()">💾 Save actual result for ${ev.code}</button>
+    </div>`;
+  updatePnlActuals();
+}
+
+function prReadForm(){
+  const num=id=>parseFloat(document.getElementById(id)?.value)||0;
+  const costs={};
+  PNL_ACTUAL_COST_LINES.forEach(([,key])=>{ costs[key]=num('pr-c-'+key); });
+  return {
+    trainer: document.getElementById('pr-trainer')?.value||'Mac Attram',
+    cur: document.getElementById('pr-currency')?.value||'SGD',
+    day1:Math.round(num('pr-day1')), day3:Math.round(num('pr-day3')),
+    vip:Math.round(num('pr-vip')), ql:Math.round(num('pr-ql')),
+    vipPrice:num('pr-vip-price'), stdPrice:num('pr-std-price'), qlPriceUSD:num('pr-ql-price'),
+    costs,
+  };
+}
+
+function updatePnlActuals(){
+  const ev=EVENTS.find(e=>e.id===prEvId)||EVENTS[0];
+  const f=prReadForm();
+  const rate=PNL_FX[f.cur]||1;
+  const sym={SGD:'S$',MYR:'RM ',USD:'$',THB:'฿'}[f.cur]||'S$';
+  const curLbl=document.getElementById('pr-cur-label');
+  if(curLbl) curLbl.textContent=`— enter in ${f.cur}`;
+
+  const std=Math.max(0,f.day1-f.vip);
+  const l1=f.vip*f.vipPrice+std*f.stdPrice;
+  // true USD→local conversion (PNL_FX is SGD-based: local = USD ÷ USD-rate × local-rate)
+  const qlPriceLocal=f.qlPriceUSD/(PNL_FX.USD||0.74)*rate;
+  const l2=f.ql*qlPriceLocal;
+  const totalRev=l1+l2;
+  const totalCost=Object.values(f.costs).reduce((s,v)=>s+v,0);
+  const net=totalRev-totalCost;
+  const margin=totalRev>0?net/totalRev*100:0;
+
+  const country=pnlEventCountry(ev);
+  const cd=PNL_COUNTRIES[country]||PNL_COUNTRIES['Malaysia'];
+  const td=PNL_TRAINERS[f.trainer]||PNL_TRAINERS['Mac Attram'];
+  const blended=(cd.avgQLDay3*0.6)+(td.avg*0.4);
+  const expectedQL=Math.round(f.day3*blended/100);
+  const actualClose=f.day3>0?(f.ql/f.day3*100):0;
+  const showUpPct=ev.reg>0&&f.day1>0?(f.day1/ev.reg*100):null;
+  const day3Ret=f.day1>0?(f.day3/f.day1*100):0;
+  const qlDelta=f.ql-expectedQL;
+
+  const fmt=n=>sym+Math.abs(Math.round(n)).toLocaleString('en-US');
+  const fmtSigned=n=>(n>=0?'+':'−')+fmt(n);
+
+  const minis=[
+    [fmtSigned(net),'Actual net · '+f.cur, net>=0?'var(--green)':'var(--red)'],
+    [fmt(totalRev),'Total revenue','var(--text)'],
+    [fmt(totalCost),'Total spend','var(--red)'],
+    [margin.toFixed(1)+'%','Net margin', net>=0?'var(--green)':'var(--red)'],
+    [f.ql+' QL','Actual QL sales'+(qlDelta!==0?` (${qlDelta>0?'+':''}${qlDelta} vs model)`:''), qlDelta>=0?'var(--green)':'var(--amber)'],
+    [actualClose.toFixed(1)+'%','Actual QL close of Day 3','var(--text)'],
+    [day3Ret.toFixed(1)+'%','Day 3 retention','var(--text)'],
+    [showUpPct!==null?showUpPct.toFixed(1)+'%':'—','Show-up of '+(ev.reg||0)+' reg','var(--text)'],
+  ];
+
+  const revRows=[
+    ['VIP ticket revenue',`${f.vip} pax × ${sym}${f.vipPrice.toLocaleString()}`,f.vip*f.vipPrice],
+    ['Standard ticket revenue',`${std} pax × ${sym}${f.stdPrice.toLocaleString()}`,std*f.stdPrice],
+    ['QL backend revenue',`${f.ql} buyers × $${f.qlPriceUSD.toLocaleString()} USD`,l2],
+    ['Total revenue','Front-end + QL backend',totalRev],
+    ['Total spend','All actual costs',-totalCost],
+    ['Actual net','Revenue minus spend',net],
+  ].map(([label,detail,amount])=>`<div style="display:grid;grid-template-columns:1.2fr 1.3fr 1fr;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:11.5px;">
+    <span style="color:var(--text2);">${label}</span>
+    <span style="color:var(--text3);font-size:10.5px;">${detail}</span>
+    <span style="font-family:var(--mono);font-weight:800;text-align:right;color:${amount<0?'var(--red)':label==='Actual net'?(amount>=0?'var(--green)':'var(--red)'):'var(--text)'};">${amount<0?'−'+fmt(Math.abs(amount)):fmt(amount)}</span>
+  </div>`).join('');
+
+  const costRows=PNL_ACTUAL_COST_LINES.map(([label,key])=>{
+    const amt=f.costs[key];
+    const pct=totalCost>0?amt/totalCost*100:0;
+    return `<div style="display:grid;grid-template-columns:1.4fr 1fr .7fr;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:11.5px;">
+      <span style="color:var(--text2);">${label}</span>
+      <span style="font-family:var(--mono);font-weight:700;text-align:right;color:${amt>0?'var(--text)':'var(--text3)'};">${fmt(amt)}</span>
+      <span style="font-family:var(--mono);color:var(--text3);text-align:right;">${pct.toFixed(1)}%</span>
+    </div>`;
+  }).join('');
+
+  const verdict= net>=0
+    ? `<div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:var(--radius-lg);padding:12px 16px;margin-top:12px;font-size:11.5px;color:#16A34A;line-height:1.7;"><b>✓ Profitable event.</b> ${ev.code} closed ${fmtSigned(net)} ${f.cur} net${qlDelta>=0?` — QL sales beat the model by ${qlDelta} buyer(s) (${actualClose.toFixed(1)}% actual close vs ${blended.toFixed(1)}% blended model).`:'.'}</div>`
+    : `<div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:var(--radius-lg);padding:12px 16px;margin-top:12px;font-size:11.5px;color:#DC2626;line-height:1.7;"><b>⚠ Loss-making event.</b> ${ev.code} closed ${fmtSigned(net)} ${f.cur} net. Actual QL close was ${actualClose.toFixed(1)}% vs ${blended.toFixed(1)}% modelled — review spend lines above.</div>`;
+
+  const sum=document.getElementById('pr-summary');
+  if(sum) sum.innerHTML=`
+    <div class="pnl-mini-grid" style="grid-template-columns:repeat(4,1fr);margin:0 0 12px;">
+      ${minis.map(([v,l,c])=>`<div class="pnl-mini"><div class="pnl-mini-v" style="color:${c};">${v}</div><div class="pnl-mini-l">${l}</div></div>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div style="background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Where the money went</div>
+        ${costRows}
+        <div style="display:flex;justify-content:space-between;padding-top:9px;font-size:12px;"><b>Total actual cost</b><b style="font-family:var(--mono);color:var(--red);">${fmt(totalCost)}</b></div>
+      </div>
+      <div style="background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">What we actually made</div>
+        ${revRows}
+      </div>
+    </div>
+    ${verdict}`;
+}
+
+function savePnlActuals(){
+  const ev=EVENTS.find(e=>e.id===prEvId)||EVENTS[0];
+  const f=prReadForm();
+  EVENT_RESULTS[ev.id]={...(EVENT_RESULTS[ev.id]||{}),
+    day1:f.day1, day3:f.day3, vip:f.vip, ql:f.ql,
+    pnl:{trainer:f.trainer, cur:f.cur, vipPrice:f.vipPrice, stdPrice:f.stdPrice, qlPriceUSD:f.qlPriceUSD, costs:f.costs, savedAt:new Date().toISOString()},
+  };
+  saveResultsQuiet();
+  renderPnlActuals();
+  showToast(`💾 Actual P&L saved for ${ev.code}`);
 }
 
 
