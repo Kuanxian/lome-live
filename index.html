@@ -4988,7 +4988,12 @@ async function doSync(ev, url, showInModal){
       showToast(`ℹ ${ev.code}: counted in lenient mode — this sheet does not use MMI's standard/vip categories, so every non-refunded row was counted.`);
     }
     if(parsed.mismatch){
-      showToast(`⚠ ${ev.code}: LOME count (${parsed.total}) differs from sheet Dashboard total (${parsed.dashboardTotal}) — check for an unrecognized ticket status/category on the sheet`);
+      // Two shapes of mismatch: the MMI script cross-checks its own count
+      // against the Dashboard subtotal; the TTT script reads the Dashboard
+      // cell and cross-checks against a raw Full List recount.
+      showToast(parsed.fullListCount!==undefined
+        ? `⚠ ${ev.code}: Dashboard ${parsed.cellRead||'total'} says ${parsed.total}, raw Full List count says ${parsed.fullListCount}. Usually a registered row whose PIC is missing from the Dashboard's per-PIC formulas. Using ${parsed.total}.`
+        : `⚠ ${ev.code}: LOME count (${parsed.total}) differs from sheet Dashboard total (${parsed.dashboardTotal}) — check for an unrecognized ticket status/category on the sheet`);
     }
     updateSyncBtn();
 
@@ -5071,6 +5076,8 @@ function convertAppsScriptResponse(json, ev){
     dashboardTotal: json.dashboardTotal,
     mismatch:    !!json.mismatch,
     mode:        json.mode || 'strict',
+    cellRead:    json.cellRead || '',
+    fullListCount: json.fullListCount,
     rowsScanned: json.rowsScanned,
     categoriesFound: json.categoriesFound || null,
     statusesFound:   json.statusesFound || null,
