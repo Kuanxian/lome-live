@@ -1205,7 +1205,12 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
   var sheets = ss.getSheets();
 
   var dashTab = findSheetByKeyword(sheets, [&#x27;dashboard&#x27;]);
-  var listTab = findSheetByKeyword(sheets, [&#x27;full list&#x27;, &#x27;master&#x27;, &#x27;registration&#x27;, &#x27;attendee&#x27;]) || sheets[0];
+  // Pick the registration tab by INSPECTING every sheet, not by trusting its
+  // name or position. Name-matching alone grabbed the first tab containing
+  // &#x27;registration&#x27;/&#x27;master&#x27; — on sheets where the real list sits further along
+  // (TTT), that silently returned the wrong tab and a total of 0.
+  var pick = pickListTab(sheets);
+  var listTab = pick.tab;
 
   var listResult = readFullList(listTab);
   var dash = dashTab ? readDashboard(dashTab) : null;
@@ -1228,12 +1233,50 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
     dashboardTotal: dash ? dash.total : null,
     mismatch: !!(dash &amp;&amp; dash.total &gt; 0 &amp;&amp; dash.total !== total),
     sheet: listTab.getName(),
+    sheetsSeen: pick.report,
     mode: listResult.mode,
     rowsScanned: listResult.rowsScanned,
     categoriesFound: listResult.categoriesFound,
     statusesFound: listResult.statusesFound,
     updated: new Date().toISOString()
   });
+}
+
+// Scores every tab on what it actually CONTAINS — an attendee-style header row
+// and a healthy number of data rows — using the name only as a tiebreaker and
+// actively demoting Dashboard/Summary tabs. Position in the workbook is
+// irrelevant, so a Full List on sheet 3 wins just as easily as one on sheet 4.
+function pickListTab(sheets) {
+  var best = null, bestScore = -1e9, report = [];
+  for (var s = 0; s &lt; sheets.length; s++) {
+    var sh = sheets[s];
+    var name = sh.getName();
+    var lname = name.toLowerCase();
+    var rows = 0, headerHit = false;
+    try {
+      var vals = sh.getDataRange().getValues();
+      for (var i = 0; i &lt; Math.min(vals.length, 12); i++) {
+        var t = vals[i].join(&#x27; &#x27;).toLowerCase();
+        if (t.indexOf(&#x27;full name&#x27;) &gt;= 0 || t.indexOf(&#x27;email&#x27;) &gt;= 0 ||
+            t.indexOf(&#x27;ticket&#x27;) &gt;= 0 || t.indexOf(&#x27;lead source&#x27;) &gt;= 0 ||
+            t.indexOf(&#x27;participant&#x27;) &gt;= 0 || t.indexOf(&#x27;attendee&#x27;) &gt;= 0) { headerHit = true; break; }
+      }
+      for (var r = 0; r &lt; vals.length; r++) { if (rowHasData(vals[r])) rows++; }
+    } catch (err) {}
+
+    var score = 0;
+    if (headerHit) score += 1000;                       // looks like a people list
+    if (lname.indexOf(&#x27;full list&#x27;) &gt;= 0) score += 500;  // the usual MMI name
+    else if (lname.indexOf(&#x27;master&#x27;) &gt;= 0 || lname.indexOf(&#x27;registration&#x27;) &gt;= 0 ||
+             lname.indexOf(&#x27;attendee&#x27;) &gt;= 0) score += 300;
+    if (lname.indexOf(&#x27;dashboard&#x27;) &gt;= 0 || lname.indexOf(&#x27;summary&#x27;) &gt;= 0 ||
+        lname.indexOf(&#x27;pivot&#x27;) &gt;= 0) score -= 800;     // totals tabs are not the list
+    score += Math.min(rows, 500);                       // more people = more likely
+
+    report.push(name + &#x27; [rows:&#x27; + rows + &#x27; header:&#x27; + headerHit + &#x27; score:&#x27; + score + &#x27;]&#x27;);
+    if (score &gt; bestScore) { bestScore = score; best = sh; }
+  }
+  return { tab: best || sheets[0], report: report };
 }
 
 function findSheetByKeyword(sheets, keywords) {
@@ -3012,14 +3055,42 @@ function resetPreview(){
   resetImportModalView();
 }
 
+// Mirror of the Apps Script's pickListTab: score every tab on whether it looks
+// like a list of people, so a Full List sitting on sheet 3 is found just as
+// reliably as one on sheet 4, whatever the tab is called.
+function pickRegistrationSheet(wb){
+  let best=wb.SheetNames[0], bestScore=-1e9;
+  wb.SheetNames.forEach(name=>{
+    const lname=name.toLowerCase();
+    let rows=0, headerHit=false;
+    try{
+      const vals=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,defval:''});
+      for(let i=0;i<Math.min(vals.length,12);i++){
+        const t=vals[i].join(' ').toLowerCase();
+        if(/full name|email|ticket|lead source|participant|attendee/.test(t)){ headerHit=true; break; }
+      }
+      rows=vals.filter(r=>r.some(c=>String(c).trim()!=='')).length;
+    }catch(e){}
+    let score=0;
+    if(headerHit) score+=1000;
+    if(lname.includes('full list')) score+=500;
+    else if(/master|registration|attendee/.test(lname)) score+=300;
+    if(/dashboard|summary|pivot/.test(lname)) score-=800;
+    score+=Math.min(rows,500);
+    if(score>bestScore){ bestScore=score; best=name; }
+  });
+  return best;
+}
+
 function processFile(file){
   if(!file||!file.name.match(/\.xlsx?$/i)){alert('Please upload an .xlsx file');return;}
   const reader=new FileReader();
   reader.onload=function(e){
     try{
       const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
-      // Widened beyond "full list" — other programs (TTT etc.) name the tab differently
-      const sheetName=wb.SheetNames.find(s=>/full list|master|registration|attendee/i.test(s))||wb.SheetNames[0];
+      // Choose the registration tab by what it contains, not by its name or
+      // position — the real list is not always the first matching tab.
+      const sheetName=pickRegistrationSheet(wb);
       const ws=wb.Sheets[sheetName];
       const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
       let hIdx=rows.findIndex(r=>r.some(c=>String(c).toLowerCase().includes('lead source')));
