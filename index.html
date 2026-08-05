@@ -1190,7 +1190,11 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
           <button class="btn" style="font-size:10px;padding:3px 9px;flex-shrink:0;" onclick="copyAppsScript()">📋 Copy script</button>
         </div>
         <pre id="apps-script-code" style="background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 12px;font-family:var(--mono);font-size:10px;color:var(--text3);line-height:1.6;max-height:130px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;margin:0;">function doGet(e) {
-  // LOME Sync Script v4 — counts registrations directly from Full List (Ticket
+  // LOME Sync Script v5 — works for MMI and for other programs (TTT etc.).
+  // v5 adds: a lenient second pass when the strict MMI ticket-category
+  // whitelist matches nothing (which is why a TTT sheet returned 0), plus
+  // diagnostics reporting the categories/statuses actually found in the sheet.
+  // Counts registrations directly from Full List (Ticket
   // Quantity summed, filtered by Ticket Category + status columns — same rigor
   // as the Dashboard&#x27;s own SUMIFS formulas) rather than trusting the Dashboard
   // tab&#x27;s cached subtotal cells, which inherit a template typo (VIP-Complimentary
@@ -1224,6 +1228,10 @@ tbody td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:m
     dashboardTotal: dash ? dash.total : null,
     mismatch: !!(dash &amp;&amp; dash.total &gt; 0 &amp;&amp; dash.total !== total),
     sheet: listTab.getName(),
+    mode: listResult.mode,
+    rowsScanned: listResult.rowsScanned,
+    categoriesFound: listResult.categoriesFound,
+    statusesFound: listResult.statusesFound,
     updated: new Date().toISOString()
   });
 }
@@ -1284,20 +1292,46 @@ function readFullList(tab) {
 
   var total = 0, vip = 0, std = 0, ql = 0, thai = 0;
   var weekly = {};
+  var seenTC = {}, seenStatus = {}, dataRows = 0;
 
+  // Pass 1 — strict whitelist. This is the MMI behaviour and is unchanged.
   for (var i = headerRowIndex + 1; i &lt; data.length; i++) {
     var row = data[i];
+    if (!rowHasData(row)) continue;
+    dataRows++;
     var tc = tcCol &gt;= 0 ? String(row[tcCol] || &#x27;&#x27;).toLowerCase().trim() : &#x27;&#x27;;
     var status = statusCol &gt;= 0 ? String(row[statusCol] || &#x27;&#x27;).toLowerCase().trim() : &#x27;&#x27;;
-
+    if (tc) seenTC[tc] = (seenTC[tc] || 0) + 1;
+    if (status) seenStatus[status] = (seenStatus[status] || 0) + 1;
     if (VALID_TC.indexOf(tc) &lt; 0 || VALID_STATUS.indexOf(status) &lt; 0) continue;
+    countRow(row, tc, status);
+  }
 
+  // Pass 2 — runs ONLY when the strict pass matched nothing at all. Programs
+  // other than MMI (TTT etc.) use their own ticket categories, so rather than
+  // reporting a confident but wrong 0, count every row that is not refunded
+  // or cancelled. The response says which mode was used so nobody is misled.
+  var mode = &#x27;strict&#x27;;
+  if (total === 0 &amp;&amp; dataRows &gt; 0) {
+    mode = &#x27;lenient&#x27;;
+    for (var j = headerRowIndex + 1; j &lt; data.length; j++) {
+      var r2 = data[j];
+      if (!rowHasData(r2)) continue;
+      var tc2 = tcCol &gt;= 0 ? String(r2[tcCol] || &#x27;&#x27;).toLowerCase().trim() : &#x27;&#x27;;
+      var st2 = statusCol &gt;= 0 ? String(r2[statusCol] || &#x27;&#x27;).toLowerCase().trim() : &#x27;&#x27;;
+      var blob = r2.join(&#x27; &#x27;).toLowerCase();
+      if (st2.indexOf(&#x27;refund&#x27;) &gt;= 0 || st2.indexOf(&#x27;cancel&#x27;) &gt;= 0) continue;
+      if (blob.indexOf(&#x27;refund&#x27;) &gt;= 0 || blob.indexOf(&#x27;cancel&#x27;) &gt;= 0) continue;
+      countRow(r2, tc2, st2);
+    }
+  }
+
+  function countRow(row, tc, status) {
     var qty = qtyCol &gt;= 0 ? (Number(row[qtyCol]) || 1) : 1;
     total += qty;
-    if (tc === &#x27;vip&#x27;) vip += qty; else std += qty;
-    if (status === &#x27;ql&#x27;) ql += qty;
+    if (tc.indexOf(&#x27;vip&#x27;) &gt;= 0) vip += qty; else std += qty;
+    if (status.indexOf(&#x27;ql&#x27;) &gt;= 0) ql += qty;
     if (row.join(&#x27; &#x27;).toLowerCase().indexOf(&#x27;thai&#x27;) &gt;= 0) thai += qty;
-
     if (dateCol &gt;= 0 &amp;&amp; row[dateCol]) {
       var d = parseDate(row[dateCol]);
       if (d) {
@@ -1310,7 +1344,18 @@ function readFullList(tab) {
     }
   }
 
-  return { total: total, vip: vip, std: std, ql: ql, thai: thai, weekly: weekly };
+  return {
+    total: total, vip: vip, std: std, ql: ql, thai: thai, weekly: weekly,
+    mode: mode, rowsScanned: dataRows,
+    categoriesFound: seenTC, statusesFound: seenStatus
+  };
+}
+
+function rowHasData(row) {
+  for (var i = 0; i &lt; row.length; i++) {
+    if (String(row[i] || &#x27;&#x27;).trim() !== &#x27;&#x27;) return true;
+  }
+  return false;
 }
 
 function findHeaderRow(data) {
@@ -1806,11 +1851,37 @@ function loadResultsFromLocal(){
     if(raw) EVENT_RESULTS=JSON.parse(raw)||{};
   }catch(e){ console.error('loadResultsFromLocal:', e); }
 }
+// ── PROGRAM SEPARATION (MMI vs TTT vs future programs) ──────────
+// Each event belongs to a program, and each printing item belongs to a
+// program. A TTT event must never be costed or packed off the MMI list.
+// Events created before this existed have no stored program, so we fall
+// back to the prefix of their code ('MMI-2607-SG' → MMI, 'TTT2609DUS' → TTT).
+const PROGRAMS={
+  MMI:{name:'Millionaire Mind Intensive', short:'MMI'},
+  TTT:{name:'Train The Trainer', short:'TTT'},
+};
+function inferProgramFromCode(code){
+  const m=String(code||'').toUpperCase().match(/^[A-Z]+/);
+  return m ? m[0] : null;
+}
+function getEventProgram(ev){
+  return ev?.program || inferProgramFromCode(ev?.code) || 'MMI';
+}
+function getProgramName(p){ return PROGRAMS[p]?.name || p; }
+// Items default to MMI — that is what the whole seeded ITEMS list is.
+function getItemProgram(it){ return it?.program || 'MMI'; }
+function itemsForEvent(ev){
+  const p=getEventProgram(ev);
+  return ITEMS.filter(it=>getItemProgram(it)===p);
+}
+
 function getNeededForEvent(code, evId){
   if(isItemIgnoredForEvent(code, evId)) return 0;
   const item=ITEMS.find(i=>i.code===code);
   const ev=EVENTS.find(e=>e.id===evId);
   if(!item||!ev) return 0;
+  // An MMI workbook has no business being counted for a TTT event.
+  if(getItemProgram(item)!==getEventProgram(ev)) return 0;
   const needed=getNeededQty(item,ev);
   return item.reusable ? (needed>0?1:0) : Math.ceil(needed*1.05);
 }
@@ -2561,6 +2632,12 @@ function getEventsPayload(){
   const data={};
   EVENTS.forEach(ev=>{
     data[ev.id]={
+      // identity fields — without these a user-added event cannot be rebuilt
+      // on the next load, because EVENTS only seeds the four hardcoded ones
+      code: ev.code, city: ev.city, date: ev.date,
+      target: ev.target || 250,
+      program: getEventProgram(ev),
+      custom: !!ev.custom,
       reg: ev.reg,
       regWeekly: Array.isArray(ev.regWeekly) ? ev.regWeekly : [],
       regWeeks: Array.isArray(ev.regWeeks) ? ev.regWeeks : [],
@@ -2578,9 +2655,28 @@ function getEventsPayload(){
 
 function applyEventsData(data){
   if(!data) return;
+  // Re-create user-added events (e.g. a TTT event) before applying values —
+  // they exist only in saved data, never in the seeded EVENTS array.
+  Object.keys(data).forEach(id=>{
+    const d=data[id];
+    if(!d || !d.custom || !d.code) return;
+    if(EVENTS.find(e=>e.id===id)) return;
+    EVENTS.push({
+      id, code:d.code, city:d.city||'', date:d.date||'', days:0,
+      target:d.target||250, status:d.status||'new',
+      reg:null, regWeekly:[], regWeeks:[], forecast:0, showUp:0,
+      vipPct:d.vipPct||38, qlPct:d.qlPct||10, lastImport:null,
+      isBKK:(d.thaiPct||0)>0, thaiPct:d.thaiPct||0,
+      program:d.program||inferProgramFromCode(d.code)||'MMI', custom:true,
+    });
+  });
   EVENTS.forEach(ev=>{
     const d=data[ev.id];
     if(!d) return;
+    if(d.program) ev.program=d.program;
+    if(d.city && !ev.city) ev.city=d.city;
+    if(d.date && !ev.date) ev.date=d.date;
+    if(typeof d.target==='number') ev.target=d.target;
     if(d.reg!==undefined) ev.reg=d.reg;
     if(Array.isArray(d.regWeekly)) ev.regWeekly=d.regWeekly;
     if(Array.isArray(d.regWeeks)) ev.regWeeks=d.regWeeks;
@@ -2659,8 +2755,32 @@ function exportInventory(){
 // PACKING PLAN — driven by show-up pax + stock check
 // ═══════════════════════════════════════════════════════════════
 function renderPackingPlan(){
-  const evId=document.getElementById('pack-ev-sel').value;
-  const ev=EVENTS.find(e=>e.id===evId);
+  const sel=document.getElementById('pack-ev-sel');
+  const evId=sel?.value;
+  let ev=EVENTS.find(e=>e.id===evId);
+  if(!ev){ ev=curEv||EVENTS[0]; if(sel&&ev) sel.value=ev.id; }
+  if(!ev) return;
+  const prog=getEventProgram(ev);
+  if(prog!=='MMI'){
+    // PACK_SECTIONS is the MMI run sheet (arrows, money-burning props, jars).
+    // Showing it for a TTT event would be actively misleading.
+    document.getElementById('pack-pax-note').textContent=`${prog} event — MMI packing list does not apply`;
+    document.getElementById('pack-prog-fill').style.width='0%';
+    document.getElementById('pack-prog-count').textContent='—';
+    document.getElementById('pack-grid').innerHTML=`
+      <div class="stock-verdict" style="align-items:center;grid-column:1/-1;">
+        <div class="stock-verdict-icon">🚚</div>
+        <div style="flex:1;">
+          <div class="stock-verdict-title">No packing list exists for ${prog} yet</div>
+          <div class="stock-verdict-body">
+            <b>${ev.code} · ${ev.city}</b> is a <b>${getProgramName(prog)}</b> event. The packing list shown here
+            is the MMI run sheet — arrows, money-burning props, jars, Day 1–3 stage items — none of which belong to ${prog}.<br><br>
+            Send through the ${prog} packing list and it will appear here as its own sectioned checklist.
+          </div>
+        </div>
+      </div>`;
+    return;
+  }
   const showUp=ev.showUp||0;
   const buffered=Math.round(showUp*1.05);
 
@@ -3088,19 +3208,39 @@ function confirmAddEvent(){
   const thai=parseInt(document.getElementById('ne-thai')?.value)||0;
 
   if(!code||!city||!sd){ showToast('Please fill in program type, city and start date'); return; }
-  if(EVENTS.find(e=>e.id===code||e.code===code)){ showToast('An event with this code already exists'); return; }
 
   const fmt=(d)=>{ if(!d) return ''; const dt=new Date(d); return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); };
   const dateStr=ed?`${fmt(sd)} – ${fmt(ed)}`:fmt(sd);
+
+  // Re-entering an existing code is how you correct a wrong city/date, since
+  // there is no separate edit screen. Registration data is left untouched.
+  const existing=EVENTS.find(e=>e.id===code||e.code===code);
+  if(existing){
+    if(!confirm(`${code} already exists (${existing.city} · ${existing.date}).\n\nUpdate it to:\n${city} · ${dateStr}\n\nRegistration numbers are kept.`)) return;
+    existing.city=city; existing.date=dateStr; existing.target=target;
+    existing.program=(document.getElementById('ne-program')?.value||existing.program||'MMI');
+    existing.thaiPct=thai; existing.isBKK=thai>0;
+    existing.custom=true;
+    closeAddEvent();
+    recomputeEventDays(); computeForecasts(); recalcAllocations();
+    saveSharedStateQuiet();
+    updateAllEventSelectors(); buildSidebar(); updateTopbar(); renderOverview();
+    showToast(`✓ ${code} updated · ${city} · ${dateStr}`);
+    return;
+  }
 
   const newEv={
     id:code, code, city, date:dateStr, days, target, status:'new',
     reg:null, regWeekly:[], regWeeks:[],
     forecast:0, showUp:0, vipPct:38, qlPct:10,
     lastImport:null, isBKK:thai>0, thaiPct:thai,
+    // program drives which printing/packing list this event uses; custom marks
+    // it as user-created so it can be restored from storage on the next load
+    program:(document.getElementById('ne-program')?.value||'MMI'), custom:true,
   };
 
   EVENTS.push(newEv);
+  saveSharedStateQuiet();
   // Add inventory allocation slot for new event
   ITEMS.forEach(it=>{ if(inventory[it.code]?.alloc) inventory[it.code].alloc[code]=0; });
   curEv=newEv;
@@ -3201,6 +3341,9 @@ function startLomeApp(){
   initFirebaseLiveSync();
   computeForecasts();
   recalcAllocations();
+  // Rebuild every event dropdown — user-added events restored from storage are
+  // not in the static option lists baked into the HTML.
+  updateAllEventSelectors();
   buildSidebar();updateTopbar();
   renderOverview();
   renderForecastTabs();
@@ -4103,7 +4246,8 @@ function renderPostEvent(){
 }
 
 function peConsumableItems(evId){
-  return ITEMS.filter(it=>!it.reusable && !isItemIgnoredForEvent(it.code,evId));
+  const ev=EVENTS.find(e=>e.id===evId);
+  return itemsForEvent(ev).filter(it=>!it.reusable && !isItemIgnoredForEvent(it.code,evId));
 }
 
 function renderPeTable(){
@@ -4623,6 +4767,22 @@ async function doSync(ev, url, showInModal){
       buildSyncTabs();
     }
     showToast(`🔄 ${ev.code} synced · ${parsed.total} registered`);
+    // A confident-looking "0 registered" is worse than an error — explain it.
+    if(parsed.total===0){
+      const cats=parsed.categoriesFound?Object.keys(parsed.categoriesFound):[];
+      const scanned=parsed.rowsScanned;
+      let why;
+      if(scanned===0 || scanned===undefined){
+        why=`LOME read the tab "${parsed.sheetName||'?'}" but found no data rows. Check the Apps Script is deployed on the ${ev.code} sheet (not another event's) and that the registration tab is named something like "Full List" or "Master".`;
+      } else {
+        why=`LOME scanned ${scanned} row(s) in "${parsed.sheetName||'?'}" but none counted.`
+          + (cats.length?` The ticket categories in that sheet are: ${cats.join(', ')}.`:' No ticket-category column was recognised.')
+          + ` If this is a TTT sheet, update the Apps Script to v5 (copy it from the setup box above) — the old version only accepts "standard" and "vip".`;
+      }
+      showSyncStatus('error','⚠ Synced, but 0 registrations counted. '+why);
+    } else if(parsed.mode==='lenient'){
+      showToast(`ℹ ${ev.code}: counted in lenient mode — this sheet does not use MMI's standard/vip categories, so every non-refunded row was counted.`);
+    }
     if(parsed.mismatch){
       showToast(`⚠ ${ev.code}: LOME count (${parsed.total}) differs from sheet Dashboard total (${parsed.dashboardTotal}) — check for an unrecognized ticket status/category on the sheet`);
     }
@@ -4706,6 +4866,11 @@ function convertAppsScriptResponse(json, ev){
     source:      json.source  || 'fulllist',
     dashboardTotal: json.dashboardTotal,
     mismatch:    !!json.mismatch,
+    mode:        json.mode || 'strict',
+    rowsScanned: json.rowsScanned,
+    categoriesFound: json.categoriesFound || null,
+    statusesFound:   json.statusesFound || null,
+    sheetName:   json.sheet || '',
   };
 }
 
@@ -4922,7 +5087,7 @@ function getLeadTimeDays(item){
 function getEventStockRows(ev){
   ensureWarehouseStock();
   const wh=getEventWarehouse(ev);
-  return ITEMS.map(it=>{
+  return itemsForEvent(ev).map(it=>{
     const need = getNeededForEvent(it.code, ev.id);
     const local = getAvailableStock(it.code, wh);
     const shortfall = Math.max(0, need-local);
@@ -5527,6 +5692,26 @@ function renderStockUserDashboard(){
   ensureWarehouseStock();
   const evId=document.getElementById('stock-event-select')?.value || curEv?.id || EVENTS[0].id;
   const ev=EVENTS.find(e=>e.id===evId) || EVENTS[0];
+  const prog=getEventProgram(ev);
+  if(!itemsForEvent(ev).length){
+    const note0=document.getElementById('stock-event-note');
+    if(note0) note0.textContent=`${prog} event — no printing list set up yet`;
+    document.getElementById('stock-user-dashboard').innerHTML=`
+      <div class="stock-verdict" style="align-items:center;">
+        <div class="stock-verdict-icon">🗂️</div>
+        <div style="flex:1;">
+          <div class="stock-verdict-title">No printing list exists for ${prog} yet</div>
+          <div class="stock-verdict-body">
+            <b>${ev.code} · ${ev.city}</b> is a <b>${getProgramName(prog)}</b> event, which uses a different set of printed materials from MMI.
+            LOME is deliberately showing nothing here rather than costing this event off the MMI list —
+            MMI workbooks, wristbands and QL folders do not apply to ${prog}.<br><br>
+            Send through the ${prog} printing list (item, spec, and whether the quantity is per pax, per VIP or fixed)
+            and it will slot in here with its own readiness, vendor orders and packing plan.
+          </div>
+        </div>
+      </div>`;
+    return;
+  }
   const wh=getEventWarehouse(ev);
   const rdy=getStockReadiness(ev);
   const rows=rdy.rows.filter(r=>{
