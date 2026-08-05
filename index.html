@@ -1726,6 +1726,34 @@ const ITEMS=[
   {code:'EP14',item:'Name Card Holder',spec:'—',cat:'ep',paxBased:true,ratio:1.0,lang:'EN',vendor:'—'},
   {code:'C1', item:'Arrow Breaking Release Form',spec:'A4 · 80gsm · B/W',cat:'material',paxBased:true,ratio:1.0,lang:'SPLIT',vendor:'Kadpo Industry (PG)'},
   {code:'C3', item:'Order Form (NCR)',spec:'A4 · NCR · B/W · Running no. from 0001',cat:'material',paxBased:true,ratio:1.0,lang:'EN',vendor:'—'},
+
+  // ── TTT — TRAIN THE TRAINER ────────────────────────────────────
+  // From "TTT - Logs - TTT Dusseldorf Printing List". That sheet has no
+  // QUANTITY column filled in, so the per-pax / fixed basis below is inferred
+  // from what each item is and MUST be confirmed before ordering.
+  {code:'T1', item:'Train The Trainer – Workbook',spec:'A4 · 80gsm Normal · Single Side',cat:'material',paxBased:true,ratio:1.0,lang:'EN',vendor:'—',program:'TTT'},
+  {code:'T2', item:'Train The Trainer – Cover Page',spec:'A4 · 128gsm Artpaper · Single Side',cat:'material',paxBased:true,ratio:1.0,lang:'EN',vendor:'—',program:'TTT'},
+  {code:'T3', item:'Declaration Sheets',spec:'A4 · 80gsm Normal · Double Sided',cat:'material',paxBased:true,ratio:1.0,lang:'EN',vendor:'—',program:'TTT'},
+  {code:'T4', item:'Funnel (Blank)',spec:'A4 · 80gsm Normal · PRINT WITH LINES',cat:'material',paxBased:true,ratio:1.0,lang:'EN',vendor:'—',program:'TTT'},
+  {code:'T5', item:'Information Funnel Example',spec:'A4 · 80gsm Normal · Double Sided',cat:'material',paxBased:true,ratio:1.0,lang:'EN',vendor:'—',program:'TTT'},
+  {code:'T6', item:'Comment Form',spec:'A4 · 80gsm Normal · Single Side',cat:'material',paxBased:true,ratio:1.0,lang:'EN',vendor:'—',program:'TTT'},
+  {code:'T7', item:'Declaration Card',spec:'A4 · 80gsm · Matte Laminated Card · Double Sided',cat:'material',paxBased:true,ratio:1.0,lang:'EN',vendor:'—',program:'TTT'},
+  {code:'T8', item:'Train The Trainer – Waiver Form (ENG)',spec:'A4 · 80gsm Normal · Double Sided',cat:'material',paxBased:true,ratio:1.0,lang:'EN',vendor:'—',program:'TTT'},
+  {code:'T9', item:'Song Sheet – The Power Of The Dream',spec:'A4 · 80gsm Normal · Double Sided',cat:'material',paxBased:true,ratio:1.0,lang:'EN',vendor:'—',program:'TTT'},
+  {code:'T10',item:'Train The Trainer – Frame Insert',spec:'A4 · 80gsm Normal · Single Side',cat:'material',paxBased:true,ratio:1.0,lang:'EN',vendor:'—',program:'TTT'},
+  {code:'T11',item:'Train The Trainer – Certificate Papers for Graduation (Emboss Logo)',spec:'A4 · 158gsm Artpaper · Single Side',cat:'ep',paxBased:true,ratio:1.0,lang:'EN',vendor:'—',program:'TTT'},
+  {code:'T12',item:'Train The Trainer – BTS Nametag',spec:'A4 · 128gsm · Matte Laminated Card · Single Side',cat:'ep',paxBased:false,fixedQty:40,lang:'EN',vendor:'—',program:'TTT'},
+  {code:'T13',item:'Train The Trainer – Participant Nametag',spec:'A4 · 128gsm · Matte Laminated Card · Single Side',cat:'ep',paxBased:true,ratio:1.0,lang:'EN',vendor:'—',program:'TTT'},
+  {code:'T14',item:'Order Form',spec:'A4 · NCR · 3-ply white/pink/yellow',cat:'material',paxBased:true,ratio:1.0,lang:'EN',vendor:'—',program:'TTT'},
+  {code:'T15',item:'Outrageous Night Card',spec:'A4 · 80gsm Normal · Single Side',cat:'material',paxBased:true,ratio:1.0,lang:'EN',vendor:'—',program:'TTT'},
+  {code:'T16',item:'Role In The Breakout Room',spec:'A4 · 80gsm Normal · Single Side',cat:'material',paxBased:true,ratio:1.0,lang:'EN',vendor:'—',program:'TTT'},
+  {code:'T17',item:'Outrageous Night Room Checklist',spec:'A4 · 80gsm Normal · Single Side',cat:'material',paxBased:false,fixedQty:10,lang:'EN',vendor:'—',program:'TTT'},
+  {code:'T18',item:'Crew Agreement',spec:'A4 · 80gsm Normal · Single Side',cat:'material',paxBased:false,fixedQty:40,lang:'EN',vendor:'—',program:'TTT'},
+  {code:'T19',item:'Outrageous Night Host NDA Agreement',spec:'A4 · 80gsm Normal · Single Side',cat:'material',paxBased:false,fixedQty:10,lang:'EN',vendor:'—',program:'TTT'},
+  {code:'T20',item:'20 Biggest Mistakes – Cover (Book)',spec:'Book cover',cat:'material',paxBased:true,ratio:1.0,lang:'EN',vendor:'—',program:'TTT'},
+  {code:'T21',item:'20 Biggest Mistakes – Content (Book)',spec:'Book content',cat:'material',paxBased:true,ratio:1.0,lang:'EN',vendor:'—',program:'TTT'},
+  {code:'T22',item:'Story Board Builder',spec:'—',cat:'material',paxBased:true,ratio:1.0,lang:'EN',vendor:'—',program:'TTT'},
+  {code:'T23',item:'3x5 Card',spec:'A4 · 128gsm Artpaper · Double Sided',cat:'material',paxBased:true,ratio:1.0,lang:'EN',vendor:'—',program:'TTT'},
 ];
 
 const PACK_SECTIONS=[
@@ -1745,6 +1773,81 @@ const PACK_SECTIONS=[
     {code:'A43',name:'A1 Display Stand',qty:'1'},{code:'A44',name:'Table Display Stand',qty:'2'},{code:'A45',name:'Lucky Draw Box',qty:'1'},{code:'A46',name:'Credit Card Machines',qty:'2 each',note:'UOB · Public Bank · Maybank'},
   ]},
 ];
+
+// ── TTT PACKING LIST ─────────────────────────────────────────────
+// From "TTT - Logs - TTT Dusseldorf Packing List". Quantities are as written
+// in that document. Noted total cost on the source sheet: RM3,734.45.
+const TTT_PACK_SECTIONS=[
+  {sec:'Registration',icon:'📋',items:[
+    {code:'TP1',name:'Sticky Dots – YELLOW',qty:'120 pcs',note:'25mm, size of a quarter · Outrageous Night handout'},
+    {code:'TP2',name:'Sticky Dots – GREEN',qty:'120 pcs',note:'Outrageous Night handout'},
+    {code:'TP3',name:'Sticky Dots – RED',qty:'120 pcs',note:'Outrageous Night handout'},
+    {code:'TP4',name:'Sticky Dots – BLUE',qty:'120 pcs',note:'Outrageous Night handout'},
+  ]},
+  {sec:'Room Decoration',icon:'🎨',items:[
+    {code:'TP5',name:'Construction Paper (jumbo book)',qty:'400 pcs',note:'20 pcs main hall · 10 pcs each breakout room · Yellow/Green/Red/Blue'},
+    {code:'TP6',name:'Ribbons – Crepe / Streamers',qty:'20 pcs',note:'Different colours · 20 main hall · 10 each breakout room'},
+    {code:'TP7',name:'Multi-colour Banners',qty:'60 pcs',note:'40 pcs main hall · 20 pcs each breakout room'},
+    {code:'TP8',name:'Colour Markers',qty:'96 pcs',note:''},
+    {code:'TP9',name:'Scissors',qty:'48 pcs',note:''},
+    {code:'TP10',name:'Sample Sayings (printed on multi-colour A4)',qty:'1 set per room',note:''},
+    {code:'TP11',name:'Blu Tack',qty:'120 pcs',note:''},
+    {code:'TP12',name:'Glue Sticks & Scotch Tape',qty:'20 pcs each',note:'20 gluestick · 20 scotch tape'},
+    {code:'TP13',name:'12 inch Balloons (bright colours)',qty:'50 pcs',note:'Per breakout room'},
+    {code:'TP14',name:'Safety Pins',qty:'150 pcs',note:'1 bag per room'},
+    {code:'TP15',name:'Multi-colour Fairy Lights',qty:'4 pcs (3m)',note:'Bright colours'},
+  ]},
+  {sec:'Final Presentation',icon:'🎤',items:[
+    {code:'TP16',name:'Markers (Black, Blue, Red, Green)',qty:'40 pcs',note:'3 markers bundled per group, different colours · add 10% spare'},
+    {code:'TP17',name:'Tape Cases (empty plastic)',qty:'150 pcs',note:'1 case per group of 3'},
+    {code:'TP18',name:'Clip Board',qty:'150 pcs',note:'1 clipboard per group of 3'},
+  ]},
+  {sec:'Graduation',icon:'🎓',items:[
+    {code:'TP19',name:'Photo Frame & Stand',qty:'500 pcs',note:'1 per participant · NIDHI CUSTOM FRAME · expected shipment 10/09/2026',paxDriven:true},
+    {code:'TP20',name:'Certificate Ribbons (pull ribbons)',qty:'1 per certificate',note:'',paxDriven:true},
+  ]},
+  {sec:'Outrageous Night',icon:'🌙',items:[
+    {code:'TP21',name:'Masking Tape',qty:'10 pcs',note:''},
+  ]},
+  {sec:'Photo Process',icon:'📸',items:[
+    {code:'TP22',name:'Colour Printer',qty:'1 unit',note:'2 printers noted on source sheet'},
+    {code:'TP23',name:'Gloves – Latex (L)',qty:'100 pcs',note:'For handling glass & photos'},
+    {code:'TP24',name:'Post-It notes / stick-on paper',qty:'4 sets',note:''},
+  ]},
+  {sec:'Timing',icon:'⏱️',items:[
+    {code:'TP25',name:'Stop Watch – large numbers & face',qty:'4 pcs',note:'1 stop watch per room'},
+    {code:'TP26',name:'Extra Stop Watch Batteries (CR2016)',qty:'10 pcs',note:''},
+  ]},
+  {sec:'Stage Setup',icon:'🎭',items:[
+    {code:'TP27',name:'Flower Arrangement – gravels inside the vase',qty:'1'},
+    {code:'TP28',name:'Flower Arrangement – Birds of Paradise',qty:'1'},
+    {code:'TP29',name:'Water Bottles (Day 1–4)',qty:'40',note:'Outrageous Night room: 30 bottles per night'},
+    {code:'TP30',name:'Chocolate Coins',qty:'1 bag (500)'},
+    {code:'TP31',name:'Music Stands (K&M)',qty:'1'},
+  ]},
+  {sec:'Trainer Stage Props',icon:'🎙️',items:[
+    {code:'TP32',name:'Batteries – extra for stop watch',qty:'1 set'},
+    {code:'TP33',name:'Book – Secrets of the Millionaire Mind (USA hardcover)',qty:'1'},
+    {code:'TP34',name:'T. Harv Eker CD + DVD Package',qty:'1'},
+    {code:'TP35',name:'Sample Audio CD Sleeve',qty:'1',note:'Preferred with window'},
+    {code:'TP36',name:'Single CD case & booklet (nice graphics)',qty:'1'},
+    {code:'TP37',name:'Double CD case & booklet (nice graphics)',qty:'1'},
+    {code:'TP38',name:'Sales Partners Logistic Manual',qty:'1'},
+    {code:'TP39',name:'Jumbo Markers – Pilot (Black/Blue/Green/Red)',qty:'1 set'},
+    {code:'TP40',name:'Graduation photo frame & certificate',qty:'1'},
+    {code:'TP41',name:'TTT Binder – full with all handouts',qty:'1'},
+    {code:'TP42',name:"Blair's Book – Little Voice Mastery",qty:'1'},
+    {code:'TP43',name:"Blair's Book – Team Code of Honor",qty:'1'},
+    {code:'TP44',name:"Blair's Book – Sales Dogs",qty:'1'},
+    {code:'TP45',name:"Blair's Book – Summit Leadership",qty:'1'},
+    {code:'TP46',name:"Blair's Book – Sales Strategies",qty:'1'},
+    {code:'TP47',name:'Little Voice CD',qty:'1'},
+    {code:'TP48',name:'Vitamix Blender',qty:'1'},
+  ]},
+];
+function getPackSections(ev){
+  return getEventProgram(ev)==='TTT' ? TTT_PACK_SECTIONS : PACK_SECTIONS;
+}
 
 const STAT_DATA=[
   {n:1,item:'2-hole Puncher',base:10},{n:2,item:'3×5 Cards',base:300},{n:3,item:'A4 Paper',base:'1 ream'},{n:4,item:'Binding Tape 60mm Black',base:10},{n:5,item:'Calculator (handheld)',base:10},{n:6,item:'Call Bell',base:2},{n:7,item:'Clear Film – Pallet Packing',base:2},{n:8,item:'Clear Tape 48mm',base:20},{n:9,item:'Clipboard',base:20},{n:10,item:"2'×3' Flipchart Paper",base:'6 pads',remark:'4 stage · 2 sales'},{n:11,item:'Glue Stick',base:10},{n:12,item:'Tissue Box',base:'10 boxes'},{n:13,item:'Masking Tape 15mm',base:10},{n:14,item:'Masking Tape 24mm',base:10},{n:15,item:'Masking Tape 48mm',base:10},{n:16,item:'Paper Clips (small+large)',base:'2 boxes each'},{n:17,item:'Paper Tray',base:10},{n:18,item:'Pen – Black',base:250,scalable:true},{n:19,item:'Pen – Blue',base:250,scalable:true},{n:20,item:'Penknife',base:5},{n:21,item:'Post-it 1×2"',base:10},{n:22,item:'Post-it 3×3"',base:10},{n:23,item:'Post-it 3×5"',base:10},{n:24,item:'Rubber Bands',base:'1 big bag'},{n:25,item:'Scissors',base:10},{n:26,item:'Scotch Tape',base:10},{n:27,item:'Sharpies',base:20},{n:28,item:'Stapler – Big',base:5},{n:29,item:'Stapler – Bullet',base:40},{n:30,item:'Counter Clicker',base:3},{n:31,item:'Acrylic Stand',base:10},
@@ -2804,10 +2907,11 @@ function renderPackingPlan(){
   if(!ev){ ev=curEv||EVENTS[0]; if(sel&&ev) sel.value=ev.id; }
   if(!ev) return;
   const prog=getEventProgram(ev);
-  if(prog!=='MMI'){
-    // PACK_SECTIONS is the MMI run sheet (arrows, money-burning props, jars).
-    // Showing it for a TTT event would be actively misleading.
-    document.getElementById('pack-pax-note').textContent=`${prog} event — MMI packing list does not apply`;
+  const SECTIONS=getPackSections(ev);
+  if(!SECTIONS || !SECTIONS.length){
+    // No packing list loaded for this program yet — never fall back to MMI's
+    // run sheet (arrows, money-burning props, jars), which would mislead.
+    document.getElementById('pack-pax-note').textContent=`${prog} event — no packing list loaded`;
     document.getElementById('pack-prog-fill').style.width='0%';
     document.getElementById('pack-prog-count').textContent='—';
     document.getElementById('pack-grid').innerHTML=`
@@ -2816,8 +2920,9 @@ function renderPackingPlan(){
         <div style="flex:1;">
           <div class="stock-verdict-title">No packing list exists for ${prog} yet</div>
           <div class="stock-verdict-body">
-            <b>${ev.code} · ${ev.city}</b> is a <b>${getProgramName(prog)}</b> event. The packing list shown here
-            is the MMI run sheet — arrows, money-burning props, jars, Day 1–3 stage items — none of which belong to ${prog}.<br><br>
+            <b>${ev.code} · ${ev.city}</b> is a <b>${getProgramName(prog)}</b> event, and no packing list has been
+            loaded for ${prog} yet. LOME will not fall back to the MMI run sheet — arrows, money-burning props and
+            Day 1–3 stage items do not belong to ${prog}.<br><br>
             Send through the ${prog} packing list and it will appear here as its own sectioned checklist.
           </div>
         </div>
@@ -2830,12 +2935,12 @@ function renderPackingPlan(){
   document.getElementById('pack-pax-note').textContent=
     ev.reg?`Registered: ${ev.reg} · Forecast: ${ev.forecast} · Show-up @65%: ~${showUp} · Pack qty (5% buf): ${buffered}`:'No registration data — import a list first';
 
-  const allItems=PACK_SECTIONS.flatMap(s=>s.items);
+  const allItems=SECTIONS.flatMap(s=>s.items);
   const done=allItems.filter(i=>packChecked[evId+'_'+i.code]).length;
   document.getElementById('pack-prog-fill').style.width=(allItems.length?Math.round(done/allItems.length*100):0)+'%';
   document.getElementById('pack-prog-count').textContent=`${done} / ${allItems.length} packed`;
 
-  document.getElementById('pack-grid').innerHTML=PACK_SECTIONS.map(sec=>{
+  document.getElementById('pack-grid').innerHTML=SECTIONS.map(sec=>{
     const secDone=sec.items.filter(i=>packChecked[evId+'_'+i.code]).length;
     return`<div class="pack-sec">
       <div class="pack-sec-hd">
@@ -2889,7 +2994,7 @@ function exportPackingPlan(){
   const evId=document.getElementById('pack-ev-sel').value;
   const ev=EVENTS.find(e=>e.id===evId);
   const rows=[['Code','Item','Pack Qty','Stock on Hand','Status','Notes']];
-  PACK_SECTIONS.forEach(sec=>{
+  getPackSections(ev).forEach(sec=>{
     rows.push([sec.sec,'','','','','']);
     sec.items.forEach(it=>{
       const matchItem=ITEMS.find(pi=>pi.code===it.code);
@@ -5156,7 +5261,11 @@ function getEventWarehouse(ev){
   if(txt.includes('bangkok') || txt.includes('thai') || txt.includes('-bkk')) return 'TH';
   if(txt.includes('philippines') || txt.includes('manila') || txt.includes('cebu')) return 'PH';
   if(txt.includes('dubai') || txt.includes('uae')) return 'UAE';
-  if(txt.includes('belgium') || txt.includes('netherlands') || txt.includes('germany') || txt.includes('spain') || txt.includes('united kingdom') || txt.includes('poland') || txt.includes('romania') || txt.includes('slovenia') || txt.includes('switzerland')) return 'EU';
+  // Countries AND the European cities we actually run in — an event stored as
+  // "Dusseldorf" was silently falling through to the Malaysia warehouse.
+  if(/belgium|netherlands|germany|spain|united kingdom|poland|romania|slovenia|switzerland|austria|france|italy|portugal|czech|hungary|ireland|sweden|norway|denmark|finland/.test(txt)) return 'EU';
+  if(/d(u|ü)sseldorf|brussels|amsterdam|frankfurt|hamburg|munich|berlin|cologne|k(o|ö)ln|stuttgart|malaga|barcelona|madrid|manchester|london|warsaw|krakow|cluj|ljubljana|zurich|geneva|vienna|paris|milan|rome|lisbon|prague|budapest|dublin|stockholm|oslo|copenhagen|helsinki/.test(txt)) return 'EU';
+  if(/-dus\b|dus$/.test(txt)) return 'EU';
   return 'MY';
 }
 function getWarehouseName(id){ return LOME_WAREHOUSES.find(w=>w.id===id)?.name || id; }
