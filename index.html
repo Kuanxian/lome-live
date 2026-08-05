@@ -3018,10 +3018,12 @@ function processFile(file){
   reader.onload=function(e){
     try{
       const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
-      const sheetName=wb.SheetNames.find(s=>s.toLowerCase().includes('full list'))||wb.SheetNames[0];
+      // Widened beyond "full list" — other programs (TTT etc.) name the tab differently
+      const sheetName=wb.SheetNames.find(s=>/full list|master|registration|attendee/i.test(s))||wb.SheetNames[0];
       const ws=wb.Sheets[sheetName];
       const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-      const hIdx=rows.findIndex(r=>r.some(c=>String(c).toLowerCase().includes('lead source')));
+      let hIdx=rows.findIndex(r=>r.some(c=>String(c).toLowerCase().includes('lead source')));
+      if(hIdx<0) hIdx=rows.findIndex(r=>r.some(c=>/full name|email|ticket|participant/i.test(String(c))));
       const headers=rows[hIdx>=0?hIdx:0].map(c=>String(c).toLowerCase().trim());
       const lsCol=headers.findIndex(h=>h.includes('lead source'));
       const dataRows=rows.slice((hIdx>=0?hIdx:0)+1).filter(r=>r.some(c=>String(c).trim()));
@@ -3029,6 +3031,19 @@ function processFile(file){
       // Weekly buckets by date
       const weeklyMap={};
       const dateCol=headers.findIndex(h=>h.includes('date'));
+      const bucketWeek=(r)=>{
+        if(dateCol<0||!r[dateCol]) return;
+        try{
+          let d;
+          if(typeof r[dateCol]==='number'){d=new Date(Math.round((r[dateCol]-25569)*864e5));}
+          else{d=new Date(r[dateCol]);}
+          if(!isNaN(d)){
+            const yr=d.getFullYear();const wk=Math.ceil((((d-new Date(yr,0,1))/864e5)+new Date(yr,0,1).getDay()+1)/7);
+            const key=`${yr}-W${String(wk).padStart(2,'0')}`;
+            weeklyMap[key]=(weeklyMap[key]||0)+1;
+          }
+        }catch(e){}
+      };
       dataRows.forEach(r=>{
         const ls=lsCol>=0?String(r[lsCol]||'').toLowerCase():'';
         if(!ls||ls.includes('refund'))return;
@@ -3036,20 +3051,25 @@ function processFile(file){
         if(ls.includes('vip'))vip++;else std++;
         if(ls.startsWith('[ql]'))ql++;
         if(ls.includes('thai'))thai++;
-        // Parse date for weekly
-        if(dateCol>=0&&r[dateCol]){
-          try{
-            let d;
-            if(typeof r[dateCol]==='number'){d=new Date(Math.round((r[dateCol]-25569)*864e5));}
-            else{d=new Date(r[dateCol]);}
-            if(!isNaN(d)){
-              const yr=d.getFullYear();const wk=Math.ceil((((d-new Date(yr,0,1))/864e5)+new Date(yr,0,1).getDay()+1)/7);
-              const key=`${yr}-W${String(wk).padStart(2,'0')}`;
-              weeklyMap[key]=(weeklyMap[key]||0)+1;
-            }
-          }catch(e){}
-        }
+        bucketWeek(r);
       });
+      // Fallback — a master list with no "Lead Source" column (TTT and other
+      // programs) would otherwise count every row as blank and report 0.
+      let importLenient=false;
+      if(total===0 && dataRows.length){
+        importLenient=true;
+        dataRows.forEach(r=>{
+          const blob=r.join(' ').toLowerCase();
+          if(!blob.trim()) return;
+          if(blob.includes('refund')||blob.includes('cancel')) return;
+          total++;
+          if(blob.includes('vip'))vip++;else std++;
+          if(blob.includes('[ql]')||blob.includes('quantum leap'))ql++;
+          if(blob.includes('thai'))thai++;
+          bucketWeek(r);
+        });
+      }
+      if(importLenient) console.log(`Import: no Lead Source column in "${sheetName}" — counted ${total} rows in lenient mode.`);
       if(vip+std<total)std=total-vip;
       const vipPct=total>0?Math.round(vip/total*100):38;
       const thaiPct=thai>0?Math.round(thai/total*100):0;
@@ -4772,12 +4792,20 @@ async function doSync(ev, url, showInModal){
       const cats=parsed.categoriesFound?Object.keys(parsed.categoriesFound):[];
       const scanned=parsed.rowsScanned;
       let why;
-      if(scanned===0 || scanned===undefined){
-        why=`LOME read the tab "${parsed.sheetName||'?'}" but found no data rows. Check the Apps Script is deployed on the ${ev.code} sheet (not another event's) and that the registration tab is named something like "Full List" or "Master".`;
+      if(scanned===undefined){
+        // v5 always reports rowsScanned. Its absence means the /exec URL is
+        // still serving old code — almost always because the script was saved
+        // but not re-deployed as a NEW version.
+        why=`Your Apps Script is still running the OLD version, so it is skipping every row that is not "standard"/"vip".`
+          + ` Saving the code is not enough — in Apps Script go to <b>Deploy → Manage deployments → ✏️ edit → Version: New version → Deploy</b>,`
+          + ` then sync again. The URL stays the same.`;
+      } else if(scanned===0){
+        why=`The updated script ran, but found no data rows in the tab "${parsed.sheetName||'?'}".`
+          + ` Check it is deployed on the ${ev.code} sheet (not another event's), and that the registration tab is named something like "Full List", "Master" or "Registration".`;
       } else {
-        why=`LOME scanned ${scanned} row(s) in "${parsed.sheetName||'?'}" but none counted.`
-          + (cats.length?` The ticket categories in that sheet are: ${cats.join(', ')}.`:' No ticket-category column was recognised.')
-          + ` If this is a TTT sheet, update the Apps Script to v5 (copy it from the setup box above) — the old version only accepts "standard" and "vip".`;
+        why=`The updated script scanned ${scanned} row(s) in "${parsed.sheetName||'?'}" and still counted none.`
+          + (cats.length?` Ticket categories found: ${cats.join(', ')}.`:' No ticket-category column was recognised.')
+          + ` Send me this message and I will match the script to your sheet.`;
       }
       showSyncStatus('error','⚠ Synced, but 0 registrations counted. '+why);
     } else if(parsed.mode==='lenient'){
